@@ -8,6 +8,8 @@ django-redis
 djangorestframework
 django-cors-headers
 django-crispy-forms
+
+# todo: remove this when building docker image
 django-npm
 
 git+https://github.com/dzhuang/pyrouter.git
