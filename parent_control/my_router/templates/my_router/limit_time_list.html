@@ -1,0 +1,113 @@
+{% extends "my_router/router_base.html" %}
+
+{% load i18n %}
+
+{% load static %}
+
+{% block title %}
+    {% trans "List of Limit time" %}
+{% endblock %}
+
+{% block header_extra %}
+    {% include "datatables-header.html" %}
+{% endblock %}
+
+{% block content %}
+    <h1>{% trans "List of Limit time" %}</h1>
+
+    <a class="btn btn-default" href="{% url "limit_time-edit" router_id -1 %}">{% trans "Add limit time" %}</a>
+
+    <table class="table table-striped limit_times-all">
+        <thead>
+        <th class="datacol">{% trans "ID" %}</th>
+        <th class="datacol">{% trans "Name" %}</th>
+        <th class="datacol">{% trans "Actions" %}</th>
+        <th class="datacol">{% trans "Start time" %}</th>
+        <th class="datacol">{% trans "end time" %}</th>
+        <th class="datacol">{% trans "Mon" %}</th>
+        <th class="datacol">{% trans "Tue" %}</th>
+        <th class="datacol">{% trans "Wed" %}</th>
+        <th class="datacol">{% trans "Thu" %}</th>
+        <th class="datacol">{% trans "Fri" %}</th>
+        <th class="datacol">{% trans "Sat" %}</th>
+        <th class="datacol">{% trans "Sun" %}</th>
+        <th class="datacol">{% trans "Apply to" %}</th>
+        </thead>
+    </table>
+{% endblock %}
+
+{% block page_bottom_javascript_extra %}
+    {% get_current_js_lang_name as LANG %}
+    <script type="text/javascript">
+        var tbl = $("table.limit_times-all").dataTable({
+            "ajax": {
+                url: '{% url "fetch-cached-info" router_id "limit_time" %}',
+                dataSrc: function (data) {
+                    return data
+                },
+                columns: [
+                    {data: "id"},
+                    {data: "name"},
+                    {data: "edit-url"},
+                    {data: "start_time"},
+                    {data: "end_time"},
+                    {data: "mon"},
+                    {data: "tue"},
+                    {data: "wed"},
+                    {data: "thu"},
+                    {data: "fri"},
+                    {data: "sat"},
+                    {data: "sun"},
+                    {data: "apply_to"},
+                ],
+            },
+            columnDefs: [
+                {
+                    targets: 2,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>"
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: [5, 6, 7, 8, 9, 10, 11],
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            var icon = 'fa-check-square-o';
+                            if (data === false) {
+                                icon = 'fa-square-o';
+                            }
+                            return '<i class="fa ' + icon + '"></i>';
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: 12,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            var html = ""
+                            for (let i = 0, len = data.length; i < len; i++) {
+                                html += "<a class='btn btn-default btn-sm' href='" + data[i]["url"] + "'>" + data[i]["name"] + "</a>";
+                            }
+                            console.log(html);
+                            return html
+                        }
+                        var names = ""
+                        for (let i = 0, len = data.length; i < len; i++) {
+                            names += '<a "class=btn" href="' + data[i]["name"] + '"></a>';
+                        }
+                        return names
+                    }
+                }
+            ],
+            "scrollCollapse": true,
+            "paging": false,
+            "ordering": true,
+            "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+        });
+    </script>
+    {{ block.super }}
+{% endblock %}

@@ -1,0 +1,9 @@
+/.idea
+**/.env
+**/.venv
+**/db.sqlite3
+**/node_modules
+**/__pycache__
+**/*.ipynb
+**/*.pyc
+/parent_control/*.sqlite3

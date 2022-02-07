@@ -1,0 +1,4 @@
+/* font-size for h2 in reused FilteredSelectMultiple */
+.selector-available h2, .selector-chosen h2 {
+    font-size: 15px;
+}

@@ -1,0 +1,82 @@
+{% extends "my_router/router_base.html" %}
+
+{% load i18n %}
+
+{% load static %}
+
+{% block title %}
+    {% trans "List of forbid domain" %}
+{% endblock %}
+
+{% block header_extra %}
+    {% include "datatables-header.html" %}
+{% endblock %}
+
+{% block content %}
+    <h1>{% trans "List of forbid domain" %}</h1>
+
+    <a class="btn btn-default" href="{% url "forbid_domain-edit" router_id "-1" %}">{% trans "Add forbid domain" %}</a>
+
+    <table class="table table-striped forbid_domains-all">
+        <thead>
+        <th class="datacol">{% trans "ID" %}</th>
+        <th class="datacol">{% trans "Domain" %}</th>
+        <th class="datacol">{% trans "Actions" %}</th>
+        <th class="datacol">{% trans "Apply to" %}</th>
+        </thead>
+    </table>
+{% endblock %}
+
+{% block page_bottom_javascript_extra %}
+    {% get_current_js_lang_name as LANG %}
+    <script type="text/javascript">
+        var tbl = $("table.forbid_domains-all").dataTable({
+            "ajax": {
+                url: '{% url "fetch-cached-info" router_id "forbid_domain" %}',
+                dataSrc: function (data) {
+                    return data
+                },
+                columns: [
+                    {data: "id"},
+                    {data: "domain"},
+                    {data: "edit-url"},
+                    {data: "apply_to"},
+                ],
+            },
+            columnDefs: [
+                {
+                    targets: 2,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>"
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: 3,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            var html = ""
+                            for (let i = 0, len = data.length; i < len; i++) {
+                                html += "<a class='btn btn-default btn-sm' href='" + data[i]["url"] + "'>" + data[i]["name"] + "</a>";
+                            }
+                            console.log(html);
+                            return html
+                        }
+                        var names = ""
+                        for (let i = 0, len = data.length; i < len; i++) {
+                            names += '<a "class=btn" href="' + data[i]["name"] + '"></a>';
+                        }
+                        return names
+                    }
+                }
+            ],
+            "scrollCollapse": true,
+            "paging": false,
+            "ordering": true,
+            "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+        });
+    </script>
+    {{ block.super }}
+{% endblock %}

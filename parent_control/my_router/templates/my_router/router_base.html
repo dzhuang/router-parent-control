@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% load static %}
+
+{% block navbar %}
+    {{ block.super }}
+    <li>
+        <a href="{% url "limit_time-list" router_id %}">{% trans "Limit time" %}</a>
+    </li>
+    <li>
+        <a href="{% url "forbid_domain-list" router_id %}">{% trans "Forbid domain" %}</a>
+    </li>
+
+{% endblock %}

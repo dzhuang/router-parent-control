@@ -1,0 +1,9 @@
+{% extends "generic-form-page.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block content %}
+    <a class="btn btn-default" href="{% url "forbid_domain-list" router_id %}">{% trans "List of forbid domain" %}</a>
+
+    {{ block.super }}
+{% endblock %}

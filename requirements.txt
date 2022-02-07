@@ -1,0 +1,16 @@
+django <4
+requests
+celery
+django-celery-results
+django-celery-beat
+
+django-redis
+djangorestframework
+django-cors-headers
+django-crispy-forms
+django-npm
+
+git+https://github.com/dzhuang/pyrouter.git
+
+# Windows dev for celery worker
+# eventlet

@@ -1,0 +1,9 @@
+{% extends "generic-form-page.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block content %}
+    <a class="btn btn-default" href="{% url "limit_time-list" router_id %}">{% trans "List of Limit time" %}</a>
+
+    {{ block.super }}
+{% endblock %}

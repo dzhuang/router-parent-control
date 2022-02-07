@@ -1,0 +1,162 @@
+{% extends "my_router/router_base.html" %}
+
+{% load i18n %}
+
+{% load static %}
+
+{% block title %}
+    {% trans "List of devices" %}
+{% endblock %}
+
+{% block header_extra %}
+    {% include "datatables-header.html" %}
+{% endblock %}
+
+{% block content %}
+    <h1>{% trans "List of devices" %}</h1>
+    <hr>
+    <div>
+        <input type="checkbox" id="offline-only"> {% trans "Offline only" %}
+        <input type="checkbox" id="blocked"> {% trans "Blocked only" %}
+        <input type="checkbox" id="skip-ignored" checked> {% trans "Skip ignored" %}
+    </div>
+    <table class="table table-striped devices-all">
+        <thead>
+        <th class="datacol">{% trans "ID" %}</th>
+        <th class="datacol">{% trans "Name of device" %}</th>
+        <th class="datacol">{% trans "Actions" %}</th>
+        <th class="datacol">{% trans "Mac" %}</th>
+        <th class="datacol">{% trans "Wifi datetime" %}</th>
+        <th class="datacol">{% trans "Online" %}</th>
+        <th class="datacol">{% trans "IP" %}</th>
+        <th class="datacol">{% trans "Blocked" %}</th>
+        <th class="datacol">{% trans "Down limit" %}</th>
+        <th class="datacol">{% trans "Up limit" %}</th>
+        <th class="datacol">{% trans "Limit time" %}</th>
+        <th class="datacol">{% trans "Forbid domain" %}</th>
+        <th class="datacol">{% trans "Ignored" %}</th>
+        </thead>
+    </table>
+{% endblock %}
+
+{% block page_bottom_javascript_extra %}
+    {% get_current_js_lang_name as LANG %}
+    <script type="text/javascript">
+        $.fn.dataTable.ext.search.push(
+            function (settings, searchData, index, rowData, counter) {
+                if (!document.getElementById("blocked").checked) return true;
+                return searchData[7] !== "false";
+            }
+        );
+
+        $.fn.dataTable.ext.search.push(
+            function (settings, searchData, index, rowData, counter) {
+                if (!document.getElementById("offline-only").checked) return true;
+                return searchData[5] === "false";
+            }
+        );
+
+        $.fn.dataTable.ext.search.push(
+            function (settings, searchData, index, rowData, counter) {
+                if (!document.getElementById("skip-ignored").checked) return true;
+                return searchData[12] === "false";
+            }
+        );
+
+        var tbl = $("table.devices-all").DataTable({
+            "ajax": {
+                url: '{% url "fetch-cached-info" router_id "device" %}',
+                dataSrc: function (data) {
+                    return data
+                },
+                columns: [
+                    {data: "id"},
+                    {data: "hostname"},
+                    {data: "edit-url"},
+                    {data: "mac"},
+                    {data: "acs_time"},
+                    {data: "online"},
+                    {data: "ip"},
+                    {data: "is_blocked"},
+                    {data: "down_limit"},
+                    {data: "up_limit"},
+                    {data: "limit_time", render: "[, ].name"},
+                    {data: "forbid_domain", render: "[, ].name"},
+                    {data: "is_intact"}
+                ],
+            },
+            columnDefs: [
+                {
+                    targets: 2,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>"
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: 5,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            if (data === false) {
+                                return '<i class="fa fa-power-off text-danger"></i>'
+                            } else {
+                                return '<i class="fa fa-wifi text-success"></i>'
+                            }
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: [7, 12],
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            var icon = 'fa-check-square-o';
+                            if (data === false) {
+                                icon = 'fa-square-o';
+                            }
+                            return '<i class="fa ' + icon + '"></i>';
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: [10, 11],
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            var html = ""
+                            for (let i = 0, len = data.length; i < len; i++) {
+                                html += "<a class='btn btn-default btn-sm' href='" + data[i]["url"] + "'>" + data[i]["name"] + "</a>";
+                            }
+                            return html
+                        }
+                        var names = ""
+                        for (let i = 0, len = data.length; i < len; i++) {
+                            names += '<a "class=btn" href="' + data[i]["name"] + '"></a>';
+                        }
+                        return names
+                    }
+                }
+            ],
+            rowCallback: function (row, data, index) {
+                if (data[7] === true) {
+                    $(row).css('background-color', '#ffc6cc');
+                } else if (data[5] === false) {
+                    $(row).css('background-color', 'lightgrey');
+                } else if (data[5] === true) {
+                    $(row).css('background-color', '#c4ffca');
+                }
+            },
+            "scrollCollapse": true,
+            "paging": false,
+            "ordering": true,
+            "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+        });
+
+        $('input:checkbox').on('change', function () {
+            tbl.draw();
+        })
+    </script>
+    {{ block.super }}
+{% endblock %}
