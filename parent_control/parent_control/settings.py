@@ -22,10 +22,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # We put it in a subdir so that we can map it in docker with -v param.
 _local_settings_file = BASE_DIR / "local_settings" / "local_settings.py"
 
-if os.environ.get("JV_TRANSPORT_LOCAL_TEST_SETTINGS", None):  # pragma: no cover
+if os.environ.get("PARENT_CONTROL_LOCAL_TEST_SETTINGS", None):  # pragma: no cover
     # This is to make sure settings_for_tests.py is not used for unit tests.
-    assert _local_settings_file != os.environ["JV_TRANSPORT_LOCAL_TEST_SETTINGS"]
-    _local_settings_file = os.environ["JV_TRANSPORT_LOCAL_TEST_SETTINGS"]
+    assert _local_settings_file != os.environ["PARENT_CONTROL_LOCAL_TEST_SETTINGS"]
+    _local_settings_file = os.environ["PARENT_CONTROL_LOCAL_TEST_SETTINGS"]
 
 local_settings = None
 if os.path.isfile(_local_settings_file):  # pragma: no cover
@@ -195,9 +195,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ORIGIN_ALLOW_ALL = os.environ.get(
     "PARENT_CONTROL_CORS_ORIGIN_ALLOW_ALL") is None
 CORS_ORIGIN_WHITELIST = (
-    'http://localhost:8020',
+    'http://localhost:8030',
     'http://localhost:8080',
-    'http://host.docker.internal:8020',
+    'http://host.docker.internal:8030',
 )
 
 CORS_URLS_REGEX = r'^/api/.*$'

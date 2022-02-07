@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  parent_control_service:
+    image: dzhuang/parent_control:latest
+    ports:
+      - 8030:8030
+    # volumes:
+      # - D:/dev/parent_control/parent_control/local_settings/:/opt/parent_control/local_settings/
+    environment:
+      - PARENT_CONTROL_SERVER_SECRET_KEY=pclpourladjfoupuigjladfj2qyqewrozcoilqepouipoigpqeroilijapoiqer
+      # - PARENT_CONTROL_SERVER_LANGUAGE_CODE=zh-hans
+      # - PARENT_CONTROL_SERVER_TZ=Asia/Shanghai
+      # - PARENT_CONTROL_SERVER_DEBUG=off
+      - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
+
+      - DJANGO_SUPERUSER_USERNAME=pc_test
+      - DJANGO_SUPERUSER_PASSWORD=pc_test
+      - DJANGO_SUPERUSER_EMAIL=blabal@example.com
+    depends_on:
+      - redis_service
+    restart: always
+
+  redis_service:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

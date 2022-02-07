@@ -1,0 +1,120 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '!**.md'
+      - '!**.ipynb'
+      - '!docker-compose-example.yml'
+      - 'parent_control/**'
+      - '!parent_control/tests/**'
+      - 'Dockerfile.base'
+      - 'Dockerfile'
+  pull_request:
+    paths:
+      - '!**.md'
+      - '!**.ipynb'
+      - '!docker-compose-example.yml'
+      - 'parent_control/**'
+      - '!parent_control/tests/**'
+      - 'Dockerfile.base'
+      - 'Dockerfile'
+
+  workflow_run:
+    workflows: ["Linters"]
+    types: [completed]
+    branches: [main]
+    paths:
+      - '!**.md'
+      - '!**.ipynb'
+      - '!docker-compose-example.yml'
+      - 'parent_control/**'
+      - '!parent_control/tests/**'
+      - 'Dockerfile.base'
+      - 'Dockerfile'
+
+jobs:
+  build:
+    name: Build docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Git branch name
+        id: git-branch-name
+        uses: EthanSK/git-branch-name-action@v1
+
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.9
+
+      - name: Only proceed if specified workflows succeeded
+        uses: ahmadnassri/action-workflow-run-wait@v1
+
+      - name: Get specific changed files
+        id: changed-files-specific
+        uses: tj-actions/changed-files@v10.1
+        with:
+          files: |
+            parent_control/requirements.txt
+            Dockerfile.base
+            nginx.default
+            package.json
+            .github/workflows/base_image.yml
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: If any of the listed files above change, build base image
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          cd parent_control
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          npm install
+          cd ..
+
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/parent_control-base:latest -f Dockerfile.base . || exit 1
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: false
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/parent_control:latest
+
+      - name: Test new image
+        timeout-minutes: 3
+        run: |
+          # disable FIRST volume
+          # sed -i 's/volumes:/#volumes:/' docker-compose-example.yml
+          # sed -i 's+C:/tmp/log+#C:/tmp/log+g' docker-compose-example.yml
+
+          docker-compose -f "docker-compose-example.yml" up -d
+          python -m pip install --upgrade pip
+          pip install requests pytest
+
+          sleep 10
+          py.test test_image.py
+          docker-compose -f "docker-compose-example.yml" down
+
+      - name: Push new base image
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          if [ ${{ env.GIT_BRANCH_NAME }} == 'main' ]
+          then
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/parent_control-base:latest
+          fi
+
+      - name: Push new image
+        run: |
+          if [ ${{ env.GIT_BRANCH_NAME }} == 'main' ]
+          then
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/parent_control:latest
+          fi
