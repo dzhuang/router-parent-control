@@ -4,18 +4,18 @@ on:
     branches:
       - main
     paths:
-      - '!**.rst'
+      - '!**.md'
       - '!**.ipynb'
       - '!docker-compose-example.yml'
-      - '!**.xlsx'
       - 'parent_control/**'
+      - '.github/**'
   pull_request:
     paths:
-      - '!**.rst'
+      - '!**.md'
       - '!**.ipynb'
       - '!docker-compose-example.yml'
-      - '!**.xlsx'
       - 'parent_control/**'
+      - '.github/**'
 
 jobs:
   lint:
@@ -29,7 +29,6 @@ jobs:
         with:
           python-version: 3.9
       - name: Install Dependencies
-        working-directory: ./parent_control
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
@@ -54,5 +53,5 @@ jobs:
       - name: Run isort
         uses: jamescurtin/isort-action@master
         with:
-            requirementsFiles: "parent_control/requirements.txt parent_control/tests/requirements_test.txt"
+            requirementsFiles: "requirements.txt"
             sortPaths: "parent_control"
