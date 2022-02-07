@@ -59,7 +59,7 @@ jobs:
         uses: tj-actions/changed-files@v10.1
         with:
           files: |
-            requirements.txt
+            parent_control/requirements.txt
             Dockerfile.base
             nginx.default
             package.json
@@ -73,9 +73,9 @@ jobs:
       - name: If any of the listed files above change, build base image
         if: steps.changed-files-specific.outputs.any_changed == 'true'
         run: |
+          cd parent_control
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          cd parent_control
           npm install
           cd ..
 
