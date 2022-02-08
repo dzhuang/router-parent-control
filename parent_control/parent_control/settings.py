@@ -286,3 +286,10 @@ if local_settings is not None:  # pragma: no cover
         import local_settings
     except ImportError:  # pragma: no cover
         pass
+
+# The interval which the app fetches remote info, in seconds
+try:
+    PARENT_CONTROL_FETCH_INFO_INTERVAL = int(
+        os.environ.get("PARENT_CONTROL_FETCH_INFO_INTERVAL"))
+except Exception:
+    PARENT_CONTROL_FETCH_INFO_INTERVAL = None

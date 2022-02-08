@@ -96,11 +96,11 @@ jobs:
           # sed -i 's+C:/tmp/log+#C:/tmp/log+g' docker-compose-example.yml
 
           docker-compose -f "docker-compose-example.yml" up -d
-          python -m pip install --upgrade pip
-          pip install requests pytest
+          # python -m pip install --upgrade pip
+          # pip install requests pytest
 
-          sleep 10
-          py.test parent_control/tests/image_test.py
+          sleep 15
+          # py.test parent_control/tests/image_test.py
           docker-compose -f "docker-compose-example.yml" down
 
       - name: Push new base image
