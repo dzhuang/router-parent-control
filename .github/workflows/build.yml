@@ -99,7 +99,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests pytest
 
-          sleep 10
+          sleep 15
           py.test parent_control/tests/image_test.py
           docker-compose -f "docker-compose-example.yml" down
 
