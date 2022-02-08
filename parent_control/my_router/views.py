@@ -210,13 +210,14 @@ class DeviceForm(StyledModelForm):
     class Meta:
         model = Device
         fields = ["name", "mac_address", 'ignore', "known", "added_datetime"]
+        widgets = {
+            'added_datetime': forms.TextInput(attrs={'disabled': True}),
+            'mac_address': forms.TextInput(attrs={'disabled': True}),
+        }
 
     class Media:
         css = filtered_select_multiple_css
         js = filtered_select_multiple_js
-
-    mac_address = forms.CharField(disabled=True)
-    added_datetime = forms.DateTimeField(disabled=True)
 
     def __init__(self, *args, **kwargs):
         limit_time_choices = kwargs.pop("limit_time_choices", ())
@@ -230,17 +231,22 @@ class DeviceForm(StyledModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields["is_blocked"] = forms.BooleanField(
+            label=_("Blocked"),
             initial=is_blocked, required=False)
         self.fields["down_limit"] = forms.IntegerField(
+            label=_("Down limit"),
             min_value=0, initial=down_limit)
         self.fields["up_limit"] = forms.IntegerField(
+            label=_("Up limit"),
             min_value=0, initial=up_limit)
 
         self.fields["limit_time"] = forms.MultipleChoiceField(
+            label=_("Limit time"),
             choices=limit_time_choices, initial=limit_time_initial,
             widget=FilteredSelectMultiple(_("Limit time"), is_stacked=False),
             required=False)
         self.fields["forbid_domain"] = forms.MultipleChoiceField(
+            label=_("Forbid domain"),
             choices=forbid_domain_choices, initial=forbid_domain_initial,
             widget=FilteredSelectMultiple(_("Forbid domain"), is_stacked=False),
             required=False)
@@ -421,13 +427,16 @@ class LimitTimeEditForm(StyledForm):
 
         disabled = not add_new
         self.fields["name"] = forms.CharField(
+            label=_("Name"),
             max_length=32, required=True,
             disabled=disabled,
             initial=name)
         self.fields["start_time"] = forms.TimeField(
+            label=_("Start time"),
             disabled=disabled, initial=start_time,
             widget=TimePickerInput)
         self.fields["end_time"] = forms.TimeField(
+            label=_("End time"),
             disabled=disabled, initial=end_time,
             widget=TimePickerInput)
 
@@ -444,6 +453,7 @@ class LimitTimeEditForm(StyledForm):
                 disabled=disabled, initial=true_false)
 
         self.fields["apply_to"] = forms.MultipleChoiceField(
+            label=_("Apply to"),
             choices=apply_to_choices, initial=apply_to_initial,
             widget=FilteredSelectMultiple(_("Limit time"), is_stacked=False),
             required=False
@@ -640,11 +650,14 @@ class ForbidDomainEditForm(StyledForm):
         super().__init__(*args, **kwargs)
 
         self.fields["domain"] = forms.CharField(
+            label=_("Domain"),
+            help_text=_("Domain name or keyword in domain name"),
             max_length=32, required=True,
             disabled=not add_new,
             initial=domain)
 
         self.fields["apply_to"] = forms.MultipleChoiceField(
+            label=_("Apply to"),
             choices=apply_to_choices, initial=apply_to_initial,
             widget=FilteredSelectMultiple(_("Forbid domain"), is_stacked=False),
             required=False

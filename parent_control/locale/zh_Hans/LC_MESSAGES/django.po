@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-02-08 00:15+0800\n"
+"POT-Creation-Date: 2022-02-08 17:58+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,20 +30,75 @@ msgstr "退出登录"
 msgid "User Profile"
 msgstr "用户信息"
 
+msgid "Active"
+msgstr "可用"
+
+msgid "Disabled"
+msgstr "已停用"
+
 msgid "Enter a valid MAC address."
 msgstr "请输入一个有效的MAC地址"
 
 msgid "Router name"
 msgstr "路由器名称"
 
-msgid "The URL of the router"
-msgstr "该路由器的URL"
+msgid "Description"
+msgstr "描述"
+
+msgid "The admin URL of the router"
+msgstr "该路由器管理页面的URL"
+
+msgid "Admin password"
+msgstr "管理密码"
+
+msgid "Admin password of the router"
+msgstr "该路由器管理界面的密码"
 
 msgid "Router model"
+msgstr "型号"
+
+msgid "The model of the router"
 msgstr "该路由器的型号"
+
+msgid "Router status"
+msgstr "路由器状态"
+
+msgid "This determines whether remote information will be fetched periodically"
+msgstr "这决定了远程信息是否会间歇性的抓取"
+
+msgid "Fetch interval"
+msgstr "抓取间隔"
+
+msgid ""
+"The interval of the app to fetch the information on the router, in seconds"
+msgstr "此app抓取路由器信息的时间间隔，单位为秒"
+
+msgid "Router"
+msgstr "路由器"
+
+msgid "Routers"
+msgstr "路由器"
+
+msgid "Fetch info and set cache"
+msgstr "抓取信息并缓存"
+
+msgid "Device name"
+msgstr "设备名称"
+
+msgid "MAC address"
+msgstr "MAC地址"
+
+msgid "Router connected"
+msgstr "连接的路由器"
+
+msgid "Known device"
+msgstr "已知"
 
 msgid "This devices is known."
 msgstr "该设备是已知的."
+
+msgid "Ignored device"
+msgstr "忽略"
 
 msgid ""
 "This device will be ignored when listing and bulk applying limit time or "
@@ -52,6 +107,12 @@ msgstr "该设备将不会在默认列表中列出，也不会在批量指定限
 
 msgid "Added datetime"
 msgstr "添加的时间"
+
+msgid "Device"
+msgstr "设备"
+
+msgid "Devices"
+msgstr "设备"
 
 #, python-brace-format
 msgid "{device} on {router}"
@@ -98,7 +159,7 @@ msgid "IP"
 msgstr ""
 
 msgid "Blocked"
-msgstr "禁止"
+msgstr "禁用"
 
 msgid "Down limit"
 msgstr "下载限速"
@@ -145,7 +206,7 @@ msgstr "名称"
 msgid "Start time"
 msgstr "开始时间"
 
-msgid "end time"
+msgid "End time"
 msgstr "结束时间"
 
 msgid "Mon"
@@ -205,6 +266,9 @@ msgstr "\"end_time\" 应大于 \"start_time\""
 
 msgid "Edit limit time"
 msgstr "编辑允许时间"
+
+msgid "Domain name or keyword in domain name"
+msgstr "域名或域名中的关键字"
 
 msgid "Parent Control"
 msgstr "家长控制"
