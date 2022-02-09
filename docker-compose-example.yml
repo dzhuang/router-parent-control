@@ -5,13 +5,14 @@ services:
     image: dzhuang/parent_control:latest
     ports:
       - 8030:8030
-    # volumes:
+    volumes:
+      - ./parent_control/database:/opt/parent_control/database
       # - D:/dev/parent_control/parent_control/local_settings/:/opt/parent_control/local_settings/
     environment:
       - PARENT_CONTROL_SERVER_SECRET_KEY=pclpourladjfoupuigjladfj2qyqewrozcoilqepouipoigpqeroilijapoiqer
       # - PARENT_CONTROL_SERVER_LANGUAGE_CODE=zh-hans
       # - PARENT_CONTROL_SERVER_TZ=Asia/Shanghai
-      # - PARENT_CONTROL_SERVER_DEBUG=off
+      - PARENT_CONTROL_SERVER_DEBUG=off
       - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
 
       - DJANGO_SUPERUSER_USERNAME=pc_test
@@ -35,6 +36,7 @@ services:
     volumes:
       - ./parent_control/database:/opt/parent_control/database
     depends_on:
+      - parent_control_service
       - redis_service
 
   celery-beat:
@@ -45,6 +47,7 @@ services:
     volumes:
       - ./parent_control/database:/opt/parent_control/database
     depends_on:
+      - parent_control_service
       - redis_service
 
 volumes:
