@@ -6,4 +6,5 @@
 **/__pycache__
 **/*.ipynb
 **/*.pyc
+**/local_settings.py
 /parent_control/*.sqlite3
