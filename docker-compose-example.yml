@@ -34,6 +34,7 @@ services:
     volumes:
       - .:/opt/parent_control
     depends_on:
+      - parent_control_service
       - redis_service
 
   celery-beat:
@@ -42,6 +43,7 @@ services:
     volumes:
       - .:/opt/parent_control
     depends_on:
+      - parent_control_service
       - redis_service
 
 volumes:
