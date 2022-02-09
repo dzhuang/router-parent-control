@@ -6,6 +6,7 @@ ARG USERNAME=pc_user
 COPY --chown=$USERNAME parent_control /opt/parent_control/
 
 WORKDIR /opt/parent_control/
+VOLUME /opt/parent_control/local_settings
 VOLUME /opt/parent_control/database
 
 EXPOSE 8030
