@@ -44,7 +44,6 @@ if os.path.isfile(_local_settings_file):  # pragma: no cover
 
     local_settings = local_settings_module.__dict__  # type: ignore  # noqa
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
@@ -67,7 +66,6 @@ custom_allowed_hosts = [
 
 if custom_allowed_hosts:  # pragma: no cover
     ALLOWED_HOSTS = ALLOWED_HOSTS + tuple(custom_allowed_hosts)
-
 
 # Application definition
 
@@ -122,17 +120,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'parent_control.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+PARENT_CONTROL_SERVER_DB_HOST = os.getenv("PARENT_CONTROL_SERVER_DB_HOST",
+                                          "localhost")
+PARENT_CONTROL_SERVER_DB_PORT = os.getenv("PARENT_CONTROL_SERVER_DB_PORT", "5432")
+PARENT_CONTROL_SERVER_DB_USER = os.getenv("PARENT_CONTROL_SERVER_DB_USER",
+                                          "parent_control")
+PARENT_CONTROL_SERVER_DB_PASSWORD = os.getenv("PARENT_CONTROL_SERVER_DB_PASSWORD",
+                                              "parent_control_pass")
+PARENT_CONTROL_SERVER_DB = os.getenv("PARENT_CONTROL_SERVER_DB", "parent_control")
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'database' / 'db.sqlite3',
-    }
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': PARENT_CONTROL_SERVER_DB,
+        'USER': PARENT_CONTROL_SERVER_DB_USER,
+        'PASSWORD': PARENT_CONTROL_SERVER_DB_PASSWORD,
+        'HOST': PARENT_CONTROL_SERVER_DB_HOST,
+        'PORT': PARENT_CONTROL_SERVER_DB_PORT,
+    },
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
@@ -152,7 +161,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
@@ -166,12 +174,10 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
 
 STATIC_ROOT = "/srv/www/static"
 
@@ -185,7 +191,6 @@ STATICFILES_DIRS = (
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 # {{{ CORS settings
 # CORS_ORIGIN_ALLOW_ALL: If True, all origins will be accepted
@@ -211,7 +216,6 @@ custom_whitelist_items = [
 
 if custom_whitelist_items:  # pragma: no cover
     CORS_ORIGIN_WHITELIST = CORS_ORIGIN_WHITELIST + tuple(custom_whitelist_items)
-
 
 LOCALE_PATHS = (
     BASE_DIR / 'locale',
@@ -250,7 +254,6 @@ CACHES = {
     }
 }
 
-
 # Celery settings
 CELERY_BROKER_URL = redis_backend_location
 CELERY_RESULT_BACKEND = redis_backend_location
@@ -274,7 +277,6 @@ if sys.platform.lower().startswith("win"):  # pragma: no cover
     STATIC_ROOT = BASE_DIR / "static"
 else:  # pragma: no cover
     NPM_ROOT_PATH = "/srv"
-
 
 if local_settings is not None:  # pragma: no cover
     for name, val in local_settings.items():
