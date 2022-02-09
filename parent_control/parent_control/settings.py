@@ -58,10 +58,10 @@ DEBUG = os.environ.get('PARENT_CONTROL_SERVER_DEBUG', 'off') == 'on'
 ALLOWED_HOSTS = ("127.0.0.1",)
 
 # You can set extra allowed host items by setting the item name
-# startswith PARENT_CONTROL__ALLOWED_HOST_ (with no ending 'S')
-# e.g., PARENT_CONTROL__ALLOWED_HOST_CAT = "http://example.com"
+# startswith PARENT_CONTROL_ALLOWED_HOST_ (with no ending 'S')
+# e.g., PARENT_CONTROL_ALLOWED_HOST_CAT = "http://example.com"
 custom_allowed_hosts = [
-    item for item in list(dict(os.environ).keys())
+    value for item, value in list(dict(os.environ).items())
     if item.startswith("PARENT_CONTROL_ALLOWED_HOST")]
 
 if custom_allowed_hosts:  # pragma: no cover
@@ -211,7 +211,7 @@ CORS_URLS_REGEX = r'^/api/.*$'
 # startswith PARENT_CONTROL_CORS_ORIGIN_WHITELIST
 # e.g., PARENT_CONTROL_CORS_ORIGIN_WHITELIST_LOCAL = "http://192.168.50.1"
 custom_whitelist_items = [
-    item for item in list(dict(os.environ).keys())
+    value for item, value in list(dict(os.environ).items())
     if item.startswith("PARENT_CONTROL_CORS_ORIGIN_WHITELIST")]
 
 if custom_whitelist_items:  # pragma: no cover
