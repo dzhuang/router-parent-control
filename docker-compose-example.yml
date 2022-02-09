@@ -27,5 +27,25 @@ services:
     volumes:
       - redis_data:/data
 
+  celery:
+    image: dzhuang/parent_control:latest
+    command: celery -A parent_control worker -l INFO
+    environment:
+      - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
+    volumes:
+      - ./parent_control/database:/opt/parent_control/database
+    depends_on:
+      - redis_service
+
+  celery-beat:
+    image: dzhuang/parent_control:latest
+    command: celery -A parent_control beat -l INFO
+    environment:
+      - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
+    volumes:
+      - ./parent_control/database:/opt/parent_control/database
+    depends_on:
+      - redis_service
+
 volumes:
   redis_data:
