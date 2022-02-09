@@ -100,7 +100,7 @@ jobs:
           pip install requests pytest
 
           sleep 15
-          py.test parent_control/tests/image_test.py
+          py.test -vv parent_control/tests/image_test.py
           docker-compose -f "docker-compose-example.yml" down
 
       - name: Push new base image
