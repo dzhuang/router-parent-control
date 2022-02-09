@@ -209,7 +209,7 @@ def fetch_new_info_and_cache(router_id):
 class DeviceForm(StyledModelForm):
     class Meta:
         model = Device
-        fields = ["name", "router", "mac_address", "ignore", "known",
+        fields = ["name", "mac_address", "ignore", "known",
                   "added_datetime"]
 
     class Media:
@@ -227,7 +227,6 @@ class DeviceForm(StyledModelForm):
         has_error = kwargs.pop("has_error", False)
         super().__init__(*args, **kwargs)
 
-        self.fields["router"].disabled = True
         self.fields["mac_address"].disabled = True
         self.fields["added_datetime"].disabled = True
 
@@ -258,6 +257,20 @@ class DeviceForm(StyledModelForm):
 
     def clean_is_blocked(self):
         return "1" if self.cleaned_data["is_blocked"] else "0"
+
+    def clean_mac_address(self):
+        instance = getattr(self, 'instance', None)
+        if instance:
+            return instance.mac_address
+        else:
+            return self.cleaned_data.get('mac_address', None)
+
+    def clean_added_datetime(self):
+        instance = getattr(self, 'instance', None)
+        if instance:
+            return instance.added_datetime
+        else:
+            return self.cleaned_data.get('added_datetime', None)
 
 
 class DeviceUpdateView(LoginRequiredMixin, UpdateView):
