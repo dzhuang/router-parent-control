@@ -5,7 +5,8 @@ services:
     image: dzhuang/parent_control:latest
     ports:
       - 8030:8030
-    # volumes:
+    volumes:
+      - .:/opt/parent_control
       # - D:/dev/parent_control/parent_control/local_settings/:/opt/parent_control/local_settings/
     environment:
       - PARENT_CONTROL_SERVER_SECRET_KEY=pclpourladjfoupuigjladfj2qyqewrozcoilqepouipoigpqeroilijapoiqer
@@ -26,6 +27,22 @@ services:
     restart: always
     volumes:
       - redis_data:/data
+
+  celery:
+    image: dzhuang/parent_control:latest
+    command: celery -A parent_control worker -l INFO
+    volumes:
+      - .:/opt/parent_control
+    depends_on:
+      - redis_service
+
+  celery-beat:
+    image: dzhuang/parent_control:latest
+    command: celery -A parent_control beat -l INFO
+    volumes:
+      - .:/opt/parent_control
+    depends_on:
+      - redis_service
 
 volumes:
   redis_data:
