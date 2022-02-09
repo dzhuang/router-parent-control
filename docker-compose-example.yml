@@ -12,7 +12,7 @@ services:
       - PARENT_CONTROL_SERVER_SECRET_KEY=pclpourladjfoupuigjladfj2qyqewrozcoilqepouipoigpqeroilijapoiqer
       # - PARENT_CONTROL_SERVER_LANGUAGE_CODE=zh-hans
       # - PARENT_CONTROL_SERVER_TZ=Asia/Shanghai
-      - PARENT_CONTROL_SERVER_DEBUG=off
+      - PARENT_CONTROL_SERVER_DEBUG=on
       - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
 
       - DJANGO_SUPERUSER_USERNAME=pc_test

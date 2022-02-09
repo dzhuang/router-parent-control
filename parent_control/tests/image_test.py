@@ -23,5 +23,5 @@ def test_login():
 
     resp = session.post(url, data=data)
 
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content.decode()
     assert 'name="api_token"' in resp.content.decode()
