@@ -6,7 +6,7 @@ services:
     ports:
       - 8030:8030
     volumes:
-      - .:/opt/parent_control
+      - .:/opt/parent_control/database
       # - D:/dev/parent_control/parent_control/local_settings/:/opt/parent_control/local_settings/
     environment:
       - PARENT_CONTROL_SERVER_SECRET_KEY=pclpourladjfoupuigjladfj2qyqewrozcoilqepouipoigpqeroilijapoiqer
@@ -32,7 +32,7 @@ services:
     image: dzhuang/parent_control:latest
     command: celery -A parent_control worker -l INFO
     volumes:
-      - .:/opt/parent_control
+      - .:/opt/parent_control/database
     depends_on:
       - parent_control_service
       - redis_service
@@ -41,7 +41,7 @@ services:
     image: dzhuang/parent_control:latest
     command: celery -A parent_control beat -l INFO
     volumes:
-      - .:/opt/parent_control
+      - .:/opt/parent_control/database
     depends_on:
       - parent_control_service
       - redis_service
