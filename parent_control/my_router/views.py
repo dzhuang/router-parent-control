@@ -209,11 +209,8 @@ def fetch_new_info_and_cache(router_id):
 class DeviceForm(StyledModelForm):
     class Meta:
         model = Device
-        fields = ["name", "mac_address", 'ignore', "known", "added_datetime"]
-        widgets = {
-            'added_datetime': forms.TextInput(attrs={'disabled': True}),
-            'mac_address': forms.TextInput(attrs={'disabled': True}),
-        }
+        fields = ["name", "router", "mac_address", "ignore", "known",
+                  "added_datetime"]
 
     class Media:
         css = filtered_select_multiple_css
@@ -229,6 +226,10 @@ class DeviceForm(StyledModelForm):
         is_blocked = kwargs.pop("is_blocked", False)
         has_error = kwargs.pop("has_error", False)
         super().__init__(*args, **kwargs)
+
+        self.fields["router"].disabled = True
+        self.fields["mac_address"].disabled = True
+        self.fields["added_datetime"].disabled = True
 
         self.fields["is_blocked"] = forms.BooleanField(
             label=_("Blocked"),
