@@ -9,7 +9,8 @@ djangorestframework
 django-cors-headers
 django-crispy-forms
 
-# todo: remove this when building docker image
 django-npm
+
+psycopg2-binary
 
 git+https://github.com/dzhuang/pyrouter.git

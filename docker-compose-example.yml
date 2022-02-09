@@ -5,13 +5,17 @@ services:
     image: dzhuang/parent_control:latest
     ports:
       - 8030:8030
-    volumes:
-      - ./parent_control/database:/opt/parent_control/database
+#    volumes:
       # - D:/dev/parent_control/parent_control/local_settings/:/opt/parent_control/local_settings/
     environment:
       - PARENT_CONTROL_SERVER_SECRET_KEY=pclpourladjfoupuigjladfj2qyqewrozcoilqepouipoigpqeroilijapoiqer
       # - PARENT_CONTROL_SERVER_LANGUAGE_CODE=zh-hans
       # - PARENT_CONTROL_SERVER_TZ=Asia/Shanghai
+      - PARENT_CONTROL_SERVER_DB_HOST=postgres_db_service
+      - PARENT_CONTROL_SERVER_DB_PORT=5432
+      - PARENT_CONTROL_SERVER_DB_USER=pc_user
+      - PARENT_CONTROL_SERVER_DB_PASSWORD=pc_user_pw
+      - PARENT_CONTROL_SERVER_DB=parent_control_db
       - PARENT_CONTROL_SERVER_DEBUG=on
       - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
 
@@ -20,6 +24,16 @@ services:
       - DJANGO_SUPERUSER_EMAIL=blabal@example.com
     depends_on:
       - redis_service
+    restart: always
+
+  postgres_db_service:
+    image: postgres
+    environment:
+      - POSTGRES_USER=pc_user
+      - POSTGRES_PASSWORD=pc_user_pw
+      - POSTGRES_DB=parent_control_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
     restart: always
 
   redis_service:
@@ -33,10 +47,14 @@ services:
     command: celery -A parent_control worker -l INFO
     environment:
       - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
-    volumes:
-      - ./parent_control/database:/opt/parent_control/database
+      - PARENT_CONTROL_SERVER_DB_HOST=postgres_db_service
+      - PARENT_CONTROL_SERVER_DB_PORT=5432
+      - PARENT_CONTROL_SERVER_DB_USER=pc_user
+      - PARENT_CONTROL_SERVER_DB_PASSWORD=pc_user_pw
+      - PARENT_CONTROL_SERVER_DB=parent_control_db
     depends_on:
       - parent_control_service
+      - postgres_db_service
       - redis_service
 
   celery-beat:
@@ -44,11 +62,16 @@ services:
     command: celery -A parent_control beat -l INFO
     environment:
       - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
-    volumes:
-      - ./parent_control/database:/opt/parent_control/database
+      - PARENT_CONTROL_SERVER_DB_HOST=postgres_db_service
+      - PARENT_CONTROL_SERVER_DB_PORT=5432
+      - PARENT_CONTROL_SERVER_DB_USER=pc_user
+      - PARENT_CONTROL_SERVER_DB_PASSWORD=pc_user_pw
+      - PARENT_CONTROL_SERVER_DB=parent_control_db
     depends_on:
       - parent_control_service
+      - postgres_db_service
       - redis_service
 
 volumes:
   redis_data:
+  postgres_data:

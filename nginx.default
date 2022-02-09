@@ -10,4 +10,6 @@ server {
     location /static {
         root /srv/www/;
     }
+    access_log /var/log/nginx/parent_control_access.log;
+ 	error_log /var/log/nginx/parent_control_error.log;
 }
