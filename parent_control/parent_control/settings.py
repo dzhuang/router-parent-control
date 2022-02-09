@@ -54,7 +54,7 @@ SECRET_KEY = os.environ.get(
     'django-insecure-cn2=(%5qhtaqn_x0or!u=v2)vk7@7)$)8ply7uey8hxy+3wz#9')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('PARENT_CONTROL_SERVER_DEBUG', 'off') == 'on'
 
 ALLOWED_HOSTS = ("127.0.0.1",)
 
@@ -129,7 +129,7 @@ WSGI_APPLICATION = 'parent_control.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'database' / 'db.sqlite3',
     }
 }
 
