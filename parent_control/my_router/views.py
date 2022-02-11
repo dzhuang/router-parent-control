@@ -3,7 +3,6 @@ from copy import deepcopy
 from crispy_forms.layout import Submit
 from django import forms
 from django.contrib import messages
-from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -26,9 +25,6 @@ from my_router.utils import (StyledForm, StyledModelForm,
                              get_cached_limit_times_cache_key,
                              get_device_cache_key,
                              get_router_all_devices_mac_cache_key)
-
-filtered_select_multiple_css = {'all': ('/static/admin/css/widgets.css',), }
-filtered_select_multiple_js = ('/admin/jsi18n',)
 
 
 def routers_context_processor(request):
@@ -216,10 +212,6 @@ class DeviceForm(StyledModelForm):
         fields = ["name", "mac", "ignore", "known",
                   "added_datetime"]
 
-    class Media:
-        css = filtered_select_multiple_css
-        js = filtered_select_multiple_js
-
     def __init__(self, *args, **kwargs):
         limit_time_choices = kwargs.pop("limit_time_choices", ())
         limit_time_initial = kwargs.pop("limit_time_initial", ())
@@ -247,12 +239,10 @@ class DeviceForm(StyledModelForm):
         self.fields["limit_time"] = forms.MultipleChoiceField(
             label=_("Limit time"),
             choices=limit_time_choices, initial=limit_time_initial,
-            widget=FilteredSelectMultiple(_("Limit time"), is_stacked=False),
             required=False)
         self.fields["forbid_domain"] = forms.MultipleChoiceField(
             label=_("Forbid domain"),
             choices=forbid_domain_choices, initial=forbid_domain_initial,
-            widget=FilteredSelectMultiple(_("Forbid domain"), is_stacked=False),
             required=False)
 
         if not has_error:
@@ -423,9 +413,6 @@ def list_limit_time(request, router_id):
 
 
 class LimitTimeEditForm(StyledForm):
-    class Media:
-        css = filtered_select_multiple_css
-        js = filtered_select_multiple_js
 
     def __init__(self, add_new, name, start_time, end_time,
                  mon, tue, wed, thu, fri, sat, sun,
@@ -462,7 +449,6 @@ class LimitTimeEditForm(StyledForm):
         self.fields["apply_to"] = forms.MultipleChoiceField(
             label=_("Apply to"),
             choices=apply_to_choices, initial=apply_to_initial,
-            widget=FilteredSelectMultiple(_("Limit time"), is_stacked=False),
             required=False
         )
 
@@ -652,9 +638,6 @@ def list_forbid_domain(request, router_id):
 
 
 class ForbidDomainEditForm(StyledForm):
-    class Media:
-        css = filtered_select_multiple_css
-        js = filtered_select_multiple_js
 
     def __init__(self, add_new, domain,
                  apply_to_choices, apply_to_initial, *args, **kwargs):
@@ -670,7 +653,6 @@ class ForbidDomainEditForm(StyledForm):
         self.fields["apply_to"] = forms.MultipleChoiceField(
             label=_("Apply to"),
             choices=apply_to_choices, initial=apply_to_initial,
-            widget=FilteredSelectMultiple(_("Forbid domain"), is_stacked=False),
             required=False
         )
 
