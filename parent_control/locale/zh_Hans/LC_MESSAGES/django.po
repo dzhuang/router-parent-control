@@ -119,8 +119,8 @@ msgid "{device} on {router}"
 msgstr "{router}上的{device}"
 
 #, python-brace-format
-msgid "must be 0 or 1, while got {data}."
-msgstr "必须为0或1，而得到的是{data}."
+msgid "must be 0 or 1, while got {form_data}."
+msgstr "必须为0或1，而得到的是{form_data}."
 
 msgid "Done"
 msgstr "完成"

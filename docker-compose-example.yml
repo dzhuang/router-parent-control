@@ -33,14 +33,14 @@ services:
       - POSTGRES_PASSWORD=pc_user_pw
       - POSTGRES_DB=parent_control_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - postgres_data:/var/lib/postgresql/form_data/
     restart: always
 
   redis_service:
     image: redis:alpine
     restart: always
     volumes:
-      - redis_data:/data
+      - redis_data:/form_data
 
   celery:
     image: dzhuang/parent_control:latest

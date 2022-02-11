@@ -86,7 +86,7 @@ class Device(models.Model):
     name = models.CharField(
         verbose_name=_("Device name"),
         max_length=31, blank=False)
-    mac_address = MACAddressField(
+    mac = MACAddressField(
         verbose_name=_("MAC address"),
         blank=False, db_index=True)
     router = models.ForeignKey(
@@ -106,7 +106,7 @@ class Device(models.Model):
     class Meta:
         verbose_name = _("Device")
         verbose_name_plural = _("Devices")
-        unique_together = ("router", "mac_address")
+        unique_together = ("router", "mac")
         ordering = ("-added_datetime",)
 
     def save(self, *args, **kwargs):

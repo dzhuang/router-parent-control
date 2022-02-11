@@ -45,12 +45,12 @@ class DeviceAdminForm(ModelForm):
 
 class DeviceAdmin(admin.ModelAdmin):
 
-    readonly_fields = ("mac_address", "name")
+    readonly_fields = ("mac", "name")
     form = DeviceAdminForm
 
     list_display = (
         "id",
-        "mac_address",
+        "mac",
         "name",
         "router",
         "ignore",
