@@ -11,7 +11,7 @@ from tests.data_for_tests import (restructured_info_dicts1,
 from tests.factories import RouterFactory
 from tests.mixins import CacheMixin, MockAddMessageMixing, RequestTestMixin
 
-from my_router.models import Device, Router
+from my_router.models import Device
 from my_router.utils import (DEFAULT_CACHE,
                              get_cached_forbid_domains_cache_key,
                              get_cached_limit_times_cache_key,
@@ -153,7 +153,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
 
 
 class GetAllCachedInfoWithOnlineStatusTest(
-    MockRouterClientMixin, CacheMixin, TestCase):
+        MockRouterClientMixin, CacheMixin, TestCase):
     # test views.get_all_cached_info_with_online_status
     def test_fetched_new_info(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)

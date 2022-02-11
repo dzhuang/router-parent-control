@@ -147,7 +147,7 @@ def get_all_cached_info_with_online_status(router_id):
             # todo: this should be done when deleting limit_time and forbid_domain
             limit_time_items = this_device_info.get("limit_time", "").split(",")
             this_device_info["limit_time"] = ",".join(
-                [l for l in limit_time_items if l in limit_time_keys])
+                [lt for lt in limit_time_items if lt in limit_time_keys])
 
             # forbid_domain items might have changed
             forbid_domain_items = (
