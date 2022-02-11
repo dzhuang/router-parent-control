@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=31, verbose_name='Device name')),
-                ('mac_address', my_router.fields.MACAddressField(db_index=True, max_length=17, verbose_name='MAC address')),
+                ('mac', my_router.fields.MACAddressField(db_index=True, max_length=17, verbose_name='MAC address')),
                 ('known', models.BooleanField(default=False, help_text='This devices is known.', verbose_name='Known device')),
                 ('ignore', models.BooleanField(default=False, help_text='This device will be ignored when listing and bulk applying limit time or forbid domain constraints.', verbose_name='Ignored device')),
                 ('added_datetime', models.DateTimeField(default=django.utils.timezone.now, verbose_name='Added datetime')),
@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Device',
                 'verbose_name_plural': 'Devices',
                 'ordering': ('-added_datetime',),
-                'unique_together': {('router', 'mac_address')},
+                'unique_together': {('router', 'mac')},
             },
         ),
     ]

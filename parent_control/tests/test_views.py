@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from unittest import mock
 from copy import deepcopy
+from unittest import mock
 
 from crispy_forms.layout import Submit
 from django.test import TestCase
@@ -209,7 +209,7 @@ class ListDevicesTest(RequestTestMixin, MockRouterClientMixin, CacheMixin, TestC
 
 
 class FetchCachedInfoTest(
-    RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
+        RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
 
     def test_post_forbidden(self):
         for info_name in ["device", "limit_time", "forbid_domain"]:
@@ -255,7 +255,7 @@ class FetchCachedInfoTest(
              down_limit, up_limit, limit_time, forbid_domain, ignored
              ) = device_result
 
-            if hostname in ["BLOCKED_DEVICE1", "BLOCKED_DEVICE2", "LIMIT_HOST2"]:
+            if hostname in ["BLOCKED_DEVICE1", "BLOCKED_DEVICE2", "LIMITED_HOST2"]:
                 self.assertFalse(online)
             else:
                 self.assertTrue(online, hostname)
@@ -265,12 +265,12 @@ class FetchCachedInfoTest(
             else:
                 self.assertFalse(is_blocked, hostname)
 
-            if hostname in ["LIMIT_HOST1", "ANOTHER_HOST"]:
+            if hostname in ["LIMITED_HOST1", "ANOTHER_HOST"]:
                 self.assertTrue(len(forbid_domain) > 0)
             else:
                 self.assertEqual(forbid_domain, [])
 
-            if hostname in ["LIMIT_HOST2", "ANOTHER_HOST"]:
+            if hostname in ["LIMITED_HOST2", "ANOTHER_HOST"]:
                 self.assertTrue(len(limit_time) > 0)
             else:
                 self.assertEqual(limit_time, [])
@@ -379,7 +379,7 @@ class DeviceUpdateViewTest(
         self.client.get(self.fetch_cached_info_url())
         assert Device.objects.count() == 6
         mac = mac or "22-33-44-55-66-77"
-        instance: Device = Device.objects.get(mac_address=mac)
+        instance: Device = Device.objects.get(mac=mac)
         data: dict = restructured_info_dicts1["host_info"][mac]
         return instance, data
 
@@ -449,7 +449,7 @@ class DeviceUpdateViewTest(
         self.mock_set_host_info.assert_called_once_with(
             mac='22-33-44-55-66-77',
             name='foobar',
-            is_blocked='0',
+            is_blocked=False,
             down_limit=0,
             up_limit=0,
             forbid_domain='',
@@ -458,7 +458,7 @@ class DeviceUpdateViewTest(
         self.assertEqual(
             self.test_cache.get(
                 get_device_cache_key(
-                    self.router.id, instance.mac_address))["hostname"],
+                    self.router.id, instance.mac))["hostname"],
             new_name
         )
         self.mock_refresh_info_cache.assert_called_once()
@@ -485,7 +485,7 @@ class DeviceUpdateViewTest(
         self.mock_set_host_info.assert_called_once_with(
             mac='22-33-44-55-66-77',
             name='foobar',
-            is_blocked='0',
+            is_blocked=False,
             down_limit=0,
             up_limit=0,
             forbid_domain='',
@@ -495,7 +495,7 @@ class DeviceUpdateViewTest(
         self.assertEqual(
             self.test_cache.get(
                 get_device_cache_key(
-                    self.router.id, instance.mac_address))["hostname"],
+                    self.router.id, instance.mac))["hostname"],
             "DEVICE1"
         )
         self.mock_refresh_info_cache.assert_not_called()
@@ -513,7 +513,7 @@ class DeviceUpdateViewTest(
         self.mock_set_host_info.assert_called_once_with(
             mac='22-33-44-55-66-77',
             name='DEVICE1',
-            is_blocked='1',
+            is_blocked=True,
             down_limit=0,
             up_limit=0,
             forbid_domain='',
@@ -522,7 +522,7 @@ class DeviceUpdateViewTest(
         self.assertEqual(
             self.test_cache.get(
                 get_device_cache_key(
-                    self.router.id, instance.mac_address))["blocked"],
+                    self.router.id, instance.mac))["blocked"],
             "1"
         )
         self.mock_refresh_info_cache.assert_called_once()
@@ -543,7 +543,7 @@ class DeviceUpdateViewTest(
             self.assertEqual(
                 self.test_cache.get(
                     get_device_cache_key(
-                        self.router.id, instance.mac_address))[_field],
+                        self.router.id, instance.mac))[_field],
                 value
             )
             self.mock_refresh_info_cache.assert_called_once()
@@ -566,7 +566,7 @@ class DeviceUpdateViewTest(
         self.mock_set_host_info.assert_called_once_with(
             mac='22-33-44-55-66-77',
             name='DEVICE1',
-            is_blocked='0',
+            is_blocked=False,
             down_limit=0,
             up_limit=0,
             forbid_domain='',
@@ -575,7 +575,7 @@ class DeviceUpdateViewTest(
         self.assertEqual(
             self.test_cache.get(
                 get_device_cache_key(
-                    self.router.id, instance.mac_address))["limit_time"],
+                    self.router.id, instance.mac))["limit_time"],
             expected_value
         )
         self.mock_refresh_info_cache.assert_called_once()
@@ -595,7 +595,7 @@ class DeviceUpdateViewTest(
         self.mock_set_host_info.assert_called_once_with(
             mac='22-33-44-55-66-77',
             name='DEVICE1',
-            is_blocked='0',
+            is_blocked=False,
             down_limit=0,
             up_limit=0,
             forbid_domain=expected_value,
@@ -604,8 +604,51 @@ class DeviceUpdateViewTest(
         self.assertEqual(
             self.test_cache.get(
                 get_device_cache_key(
-                    self.router.id, instance.mac_address))["forbid_domain"],
+                    self.router.id, instance.mac))["forbid_domain"],
             expected_value
+        )
+
+        self.mock_refresh_info_cache.assert_called_once()
+
+    def test_post_another_case(self):
+        mac = "44-44-44-44-44-44"
+        expected_limit_time = "limit_time_5"
+        expected_forbid_domain = "forbid_domain_4"
+        instance, post_data = self.get_instance_and_post_data(
+            mac=mac,
+            forbid_domain=[expected_forbid_domain],
+            limit_time=[expected_limit_time],
+            up_limit=0,
+            down_limit=5
+        )
+
+        with mock.patch("my_router.models.Router.save") as mock_save:
+            resp = self.client.post(
+                self.device_edit_url(instance.pk), data=post_data)
+            self.assertEqual(resp.status_code, 302)
+            mock_save.assert_not_called()
+
+        self.mock_set_host_info.assert_called_once_with(
+            mac=mac,
+            name='LIMITED_HOST2',
+            is_blocked=False,
+            down_limit=5,
+            up_limit=0,
+            forbid_domain=expected_forbid_domain,
+            limit_time=expected_limit_time)
+
+        self.assertEqual(
+            self.test_cache.get(
+                get_device_cache_key(
+                    self.router.id, instance.mac))["forbid_domain"],
+            expected_forbid_domain
+        )
+
+        self.assertEqual(
+            self.test_cache.get(
+                get_device_cache_key(
+                    self.router.id, instance.mac))["limit_time"],
+            expected_limit_time
         )
 
         self.mock_refresh_info_cache.assert_called_once()

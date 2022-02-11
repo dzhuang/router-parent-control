@@ -29,5 +29,5 @@ def create_or_update_router_fetch_task(sender, instance: Router, created, **kwar
 @receiver(post_delete, sender=Device)
 def remove_device_cache_after_delete(sender, instance: Device, **kwargs):
     DEFAULT_CACHE.delete(
-        get_device_cache_key(instance.router_id, instance.mac_address))
+        get_device_cache_key(instance.router_id, instance.mac))
     fetch_new_info_and_cache(instance.id)

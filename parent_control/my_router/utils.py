@@ -73,9 +73,13 @@ def deep_update(source, overrides):
     return source
 
 
+class CacheDataDoesNotExist(Exception):
+    pass
+
+
 def get_device_cache_key(router_id, mac_address):
     return DEVICE_CACHE_KEY_PATTERN.format(
-        router_id=router_id, mac_address=mac_address, cache_version=CACHE_VERSION)
+        router_id=router_id, mac=mac_address, cache_version=CACHE_VERSION)
 
 
 def get_router_all_devices_mac_cache_key(router_id):
