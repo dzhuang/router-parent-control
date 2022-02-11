@@ -78,7 +78,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "crispy_forms",
     "django_celery_beat",
-    'django_celery_results',
+    # 'django_celery_results',
     'corsheaders',
     'rest_framework.authtoken',
     'rest_framework',
@@ -278,6 +278,13 @@ if sys.platform.lower().startswith("win"):  # pragma: no cover
 else:  # pragma: no cover
     NPM_ROOT_PATH = "/srv"
 
+# The interval which the app fetches remote info, in seconds
+try:
+    PARENT_CONTROL_FETCH_INFO_INTERVAL = int(
+        os.environ.get("PARENT_CONTROL_FETCH_INFO_INTERVAL"))
+except Exception:
+    PARENT_CONTROL_FETCH_INFO_INTERVAL = 10
+
 if local_settings is not None:  # pragma: no cover
     for name, val in local_settings.items():
         if not name.startswith("_"):
@@ -288,10 +295,3 @@ if local_settings is not None:  # pragma: no cover
         import local_settings
     except ImportError:  # pragma: no cover
         pass
-
-# The interval which the app fetches remote info, in seconds
-try:
-    PARENT_CONTROL_FETCH_INFO_INTERVAL = int(
-        os.environ.get("PARENT_CONTROL_FETCH_INFO_INTERVAL"))
-except Exception:
-    PARENT_CONTROL_FETCH_INFO_INTERVAL = None

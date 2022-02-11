@@ -2,12 +2,13 @@ from copy import deepcopy
 
 from crispy_forms.layout import Submit
 from django import forms
+from django.contrib import messages
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.messages import ERROR, add_message
-from django.db import IntegrityError, transaction
-from django.http import Http404, HttpResponseRedirect, JsonResponse
+from django.db import transaction
+from django.http import (Http404, HttpResponseForbidden, HttpResponseRedirect,
+                         JsonResponse)
 from django.shortcuts import get_object_or_404, render
 from django.utils.translation import gettext_lazy as _
 from django.views.generic.edit import UpdateView
@@ -23,7 +24,7 @@ from my_router.utils import (StyledForm, StyledModelForm,
                              get_cached_limit_times,
                              get_cached_limit_times_cache_key,
                              get_device_cache_key,
-                             get_router_devices_mac_cache_key)
+                             get_router_all_devices_mac_cache_key)
 
 filtered_select_multiple_css = {'all': ('/static/admin/css/widgets.css',), }
 filtered_select_multiple_js = ('/admin/jsi18n',)
@@ -35,96 +36,6 @@ def routers_context_processor(request):
     return {
         "routers": Router.objects.all()
     }
-
-
-@login_required
-def list_devices(request, router_id):
-    return render(request, "my_router/device-list.html", {
-        "router_id": router_id,
-        "form_description": _("List of devices"),
-    })
-
-
-def get_merged_info_from_cache(router_id):
-    all_macs = DEFAULT_CACHE.get(get_router_devices_mac_cache_key(router_id), [])
-
-    last_all_info = DEFAULT_CACHE.get(get_all_info_cache_key(router_id), {})
-    host_info = last_all_info.get("host_info", {})
-
-    host_info_updated = False
-    for mac in all_macs:
-        if mac not in host_info:
-            cache_key = get_device_cache_key(mac)
-            this_mac_info = DEFAULT_CACHE.get(cache_key, {})
-            if this_mac_info:
-                # todo: update limit_time and forbid_domain
-                this_mac_info["online"] = False
-                host_info[mac] = this_mac_info
-                host_info_updated = True
-
-    if host_info_updated:
-        last_all_info["host_info"] = host_info
-
-    return last_all_info
-
-
-@login_required
-def fetch_cached_info(request, router_id, info_name):
-    if request.method == "GET":
-        last_all_info = get_merged_info_from_cache(router_id)
-        if not last_all_info:
-            return JsonResponse(
-                data=[], safe=False)
-
-        serializer = InfoSerializer(data=last_all_info)
-        if serializer.is_valid():
-            router = Router.objects.get(id=router_id)
-
-            if info_name == "device":
-                for info in serializer.data["host_info"].values():
-                    # save/update device data into database
-                    data = deepcopy(info)
-                    d_serializer = DeviceModelSerializer(data=data)
-                    if d_serializer.is_valid():
-                        try:
-                            d_serializer.save(router=router)
-                        except IntegrityError:
-                            data = deepcopy(info)
-                            exist_device = Device.objects.get(
-                                mac_address=data["mac"])
-                            if exist_device.name != Device.name:
-                                _serializer = DeviceModelSerializer(
-                                    instance=exist_device, data=data)
-                                if _serializer.is_valid():
-                                    _serializer.save()
-
-            return JsonResponse(
-                data=serializer.get_datatable_data(router_id, info_name),
-                safe=False)
-        else:
-            return JsonResponse(data=serializer.errors, status=400)
-
-
-def find_available_name(router_id, prefix, fetch_latest=False):
-    assert prefix in ["limit_time", "forbid_domain"]
-    if prefix == "limit_time":
-        all_data: dict = get_cached_limit_times(router_id)
-    else:
-        all_data: dict = get_cached_forbid_domains(router_id)
-
-    if not all_data or fetch_latest:
-        fetch_new_info_and_cache(router_id)
-        return find_available_name(router_id, prefix)
-
-    all_keys: list = list(all_data.keys())
-    numbers = []
-    for v in all_keys:
-        s = v.split("_")
-        numbers.append(int(s[-1]))
-
-    _number = sorted(list(set(list(range(1, max(numbers) + 2)))
-                          - set(numbers)))[0]
-    return f"{prefix}_{_number}"
 
 
 def fetch_new_info_and_cache(router_id):
@@ -146,34 +57,38 @@ def fetch_new_info_and_cache(router_id):
     # {{{ handle host_info
     host_info = new_result["host_info"]
 
-    # update mac list cache
-    all_mac_cache_key = get_router_devices_mac_cache_key(router_id)
-    all_cached_macs = DEFAULT_CACHE.get(all_mac_cache_key, [])
-    online_macs = list(host_info.keys())
-    all_cached_macs = set(list(all_cached_macs) + list(online_macs))
+    # update mac set cache
+    all_mac_cache_key = get_router_all_devices_mac_cache_key(router_id)
+    all_cached_macs: set = (
+            DEFAULT_CACHE.get(all_mac_cache_key, set())
+            | set(list(host_info.keys())))
     DEFAULT_CACHE.set(all_mac_cache_key, all_cached_macs)
 
     for mac, info in host_info.items():
-        cache_key = get_device_cache_key(mac)
+        cache_key = get_device_cache_key(router_id, mac)
         DEFAULT_CACHE.set(cache_key, info)
 
     for mac in all_cached_macs:
-        device_info = DEFAULT_CACHE.get(get_device_cache_key(mac), None)
-        if device_info:
-            if "limit_time" in device_info and device_info["limit_time"] != "":
-                limit_time = device_info["limit_time"]
-                limit_time_list = limit_time.split(",")
-                for lt in limit_time_list:
-                    limit_time_device_dict[lt]: list = (
-                            list(limit_time_device_dict.get(lt, [])) + [mac])
+        # update from ALL device the dict of limit_time and forbid_domain
+        # todo: if device removed, delete the cache
+        device_info = DEFAULT_CACHE.get(
+            get_device_cache_key(router_id, mac), None)
 
-            if ("forbid_domain" in device_info
-                    and device_info["forbid_domain"] != ""):
-                forbid_domain = device_info["forbid_domain"]
-                forbid_domain_list = forbid_domain.split(",")
-                for fb in forbid_domain_list:
-                    forbid_domain_device_dict[fb]: list = (
-                            list(forbid_domain_device_dict.get(fb, [])) + [mac])
+        if not device_info:
+            # Avoiding device cache deleted
+            continue
+
+        limit_time = device_info.get("limit_time", "")
+        limit_time_list = limit_time.split(",")
+        for lt in limit_time_list:
+            limit_time_device_dict[lt]: list = (
+                    list(limit_time_device_dict.get(lt, [])) + [mac])
+
+        forbid_domain = device_info.get("forbid_domain", "")
+        forbid_domain_list = forbid_domain.split(",")
+        for fb in forbid_domain_list:
+            forbid_domain_device_dict[fb]: list = (
+                    list(forbid_domain_device_dict.get(fb, [])) + [mac])
     # }}}
 
     # {{{ handle limit_time
@@ -204,6 +119,96 @@ def fetch_new_info_and_cache(router_id):
     DEFAULT_CACHE.set(get_all_info_cache_key(router_id), new_result)
 
     return new_result
+
+
+def get_all_cached_info_with_online_status(router_id):
+    cached_info = DEFAULT_CACHE.get(get_all_info_cache_key(router_id))
+
+    # Avoiding cache cleared
+    if not cached_info:
+        cached_info = fetch_new_info_and_cache(router_id)
+        assert cached_info
+
+    host_info = cached_info.get("host_info", {})
+
+    limit_time_keys = cached_info.get("limit_time", {}).keys()
+    forbid_domain_keys = cached_info.get("forbid_domain", {}).keys()
+
+    all_macs_cached = DEFAULT_CACHE.get(
+        get_router_all_devices_mac_cache_key(router_id), [])
+    for mac in all_macs_cached:
+        if mac not in host_info:
+            # devices not present in current cached all_info
+            this_device_info = DEFAULT_CACHE.get(
+                get_device_cache_key(router_id, mac), {})
+
+            if not this_device_info:
+                # Avoiding device cache deleted
+                continue
+
+            this_device_info["online"] = False
+
+            # limit_time items might have changed
+            # todo: this should be done when deleting limit_time and forbid_domain
+            limit_time_items = this_device_info.get("limit_time", "").split(",")
+            this_device_info["limit_time"] = ",".join(
+                [l for l in limit_time_items if l in limit_time_keys])
+
+            # forbid_domain items might have changed
+            forbid_domain_items = (
+                this_device_info.get("forbid_domain", "").split(","))
+            this_device_info["forbid_domain"] = ",".join(
+                [fb for fb in forbid_domain_items
+                 if fb in forbid_domain_keys])
+
+            host_info[mac] = this_device_info
+
+    cached_info["host_info"] = host_info
+
+    return cached_info
+
+
+@login_required
+def fetch_cached_info(request, router_id, info_name):
+    if request.method == "GET":
+        all_cached_info = get_all_cached_info_with_online_status(router_id)
+        if not all_cached_info:
+            return JsonResponse(
+                data=[], safe=False)
+
+        serializer = InfoSerializer(data=all_cached_info)
+        if serializer.is_valid():
+            router = Router.objects.get(id=router_id)
+
+            for info in serializer.data["host_info"].values():
+                # save/update device form_data into database
+                data = deepcopy(info)
+                instances = Device.objects.filter(mac_address=data["mac"])
+                if instances.count():
+                    instance = instances[0]
+                else:
+                    instance = None
+                d_serializer = DeviceModelSerializer(instance=instance, data=data)
+                assert d_serializer.is_valid()
+                with transaction.atomic():
+                    d_serializer.save(router=router)
+
+            return JsonResponse(
+                data=serializer.get_datatable_data(router_id, info_name),
+                safe=False)
+        else:
+            return JsonResponse(data=serializer.errors, status=400)
+
+    # POST not allowed
+    return HttpResponseForbidden()
+
+
+@login_required
+def list_devices(request, router_id):
+    return render(request, "my_router/device-list.html", {
+        "router_id": router_id,
+        "form_description": _("List of devices"),
+    })
 
 
 class DeviceForm(StyledModelForm):
@@ -259,18 +264,10 @@ class DeviceForm(StyledModelForm):
         return "1" if self.cleaned_data["is_blocked"] else "0"
 
     def clean_mac_address(self):
-        instance = getattr(self, 'instance', None)
-        if instance:
-            return instance.mac_address
-        else:
-            return self.cleaned_data.get('mac_address', None)
+        return self.instance.mac_address
 
     def clean_added_datetime(self):
-        instance = getattr(self, 'instance', None)
-        if instance:
-            return instance.added_datetime
-        else:
-            return self.cleaned_data.get('added_datetime', None)
+        return self.instance.added_datetime
 
 
 class DeviceUpdateView(LoginRequiredMixin, UpdateView):
@@ -284,6 +281,7 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         self.cached_limit_time = None
         self.cached_forbid_domain = None
         self.changed_fields = []
+        self.instance_data = None
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -291,10 +289,10 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         try:
             all_info = fetch_new_info_and_cache(self.object.router.id)
             self.cached_device_info = DEFAULT_CACHE.get(
-                get_device_cache_key(self.object.mac_address)
-            )
+                get_device_cache_key(
+                    self.kwargs["router_id"], self.object.mac_address))
         except Exception as e:
-            add_message(self.request, ERROR, str(e))
+            messages.add_message(self.request, messages.ERROR, str(e))
             kwargs["has_error"] = True
             return kwargs
 
@@ -344,7 +342,72 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
             "Update Device {device_name}").format(device_name=self.object.name)
         return context_data
 
-    def set_device_cache_data(self, form_data):
+    def update_router_data(self, form_data):
+        cache_info_serializer = DeviceSerializer(
+            data=deepcopy(self.cached_device_info))
+        assert cache_info_serializer.is_valid(raise_exception=True)
+        cached_info = cache_info_serializer.data
+
+        need_update_remote = False
+        for key in ["name", "is_blocked", "down_limit", "up_limit"]:
+            if form_data[key] != cached_info[key]:
+                need_update_remote = True
+                self.changed_fields.append(key)
+
+        if set(form_data["limit_time"]) != set(self.cached_limit_time):
+            need_update_remote = True
+            self.changed_fields.append("limit_time")
+
+        if set(form_data["forbid_domain"]) != set(self.cached_forbid_domain):
+            need_update_remote = True
+            self.changed_fields.append("forbid_domain")
+
+        if need_update_remote:
+            limit_time = ",".join(form_data["limit_time"])
+            forbid_domain = ",".join(form_data["forbid_domain"])
+
+            client = self.object.router.get_client()
+
+            client.set_host_info(
+                mac=self.object.mac_address,
+                name=form_data["name"],
+                is_blocked=form_data["is_blocked"],
+                down_limit=form_data["down_limit"],
+                up_limit=form_data["up_limit"],
+                forbid_domain=forbid_domain,
+                limit_time=limit_time
+            )
+
+        return need_update_remote
+
+    def form_valid(self, form):
+        """If the form is valid, save the associated model."""
+
+        data = form.cleaned_data
+
+        try:
+            remote_updated = self.update_router_data(data)
+        except Exception as e:
+            messages.add_message(
+                self.request, messages.ERROR, f"{type(e).__name__}： {str(e)}")
+        else:
+            for _field in form.changed_data:
+                if _field in ["name", "known", "ignore"]:
+                    with transaction.atomic():
+                        self.object = form.save()
+
+            if remote_updated:
+                self.update_cache_data(data)
+
+        return HttpResponseRedirect(self.get_success_url())
+
+    def update_cache_data(self, form_data):
+        self.update_device_cache_data(form_data)
+        self.refresh_all_info_cache()
+
+    def update_device_cache_data(self, form_data):
+        # update single device cache, because the device can not be access
+        # via the router if it is offline
         new_cache_data = deepcopy(self.cached_device_info)
         for field_name in self.changed_fields:
             if field_name == "name":
@@ -357,64 +420,39 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
                 new_cache_data[field_name] = form_data[field_name]
 
         DEFAULT_CACHE.set(
-            get_device_cache_key(self.cached_device_info["mac"]),
+            get_device_cache_key(self.kwargs["router_id"],
+                                 self.object.mac_address),
             new_cache_data
         )
 
-    def form_valid(self, form):
-        """If the form is valid, save the associated model."""
+    def refresh_all_info_cache(self):
+        # Cached limit_time and forbid_domain can only be updated by
+        # fetch_new_info_and_cache method.
+        # We put it as a new method to facilitate tests.
 
-        client = self.object.router.get_client()
-        data = form.cleaned_data
+        fetch_new_info_and_cache(self.kwargs["router_id"])
 
-        cached_info = None
-        cache_info_serializer = DeviceSerializer(
-            data=deepcopy(self.cached_device_info))
-        if cache_info_serializer.is_valid(raise_exception=True):
-            cached_info = cache_info_serializer.data
 
-        assert cached_info
-        need_update_remote = False
-        for key in ["name", "is_blocked", "down_limit", "up_limit"]:
-            if data[key] != cached_info[key]:
-                need_update_remote = True
-                self.changed_fields.append(key)
+def find_available_name(router_id, prefix, fetch_latest=False):
+    assert prefix in ["limit_time", "forbid_domain"]
+    if prefix == "limit_time":
+        all_data: dict = get_cached_limit_times(router_id)
+    else:
+        all_data: dict = get_cached_forbid_domains(router_id)
 
-        if not need_update_remote:
-            if set(data["limit_time"]) != set(self.cached_limit_time):
-                need_update_remote = True
-                self.changed_fields.append("limit_time")
+    if not all_data or fetch_latest:
+        fetch_new_info_and_cache(router_id)
+        return find_available_name(router_id, prefix)
 
-            if set(data["forbid_domain"]) != set(self.cached_forbid_domain):
-                need_update_remote = True
-                self.changed_fields.append("forbid_domain")
+    all_keys: list = list(all_data.keys())
+    numbers = []
+    for v in all_keys:
+        s = v.split("_")
+        numbers.append(int(s[-1]))
 
-        will_proceed_data_save = True
-        if need_update_remote:
-            limit_time = ",".join(data["limit_time"])
-            forbid_domain = ",".join(data["forbid_domain"])
-
-            try:
-                client.set_host_info(
-                    self.object.mac_address,
-                    name=data["name"],
-                    is_blocked=data["is_blocked"],
-                    down_limit=data["down_limit"],
-                    up_limit=data["up_limit"],
-                    forbid_domain=forbid_domain,
-                    limit_time=limit_time
-                )
-            except Exception as e:
-                add_message(self.request, ERROR, str(e))
-                will_proceed_data_save = False
-
-        if will_proceed_data_save:
-            with transaction.atomic():
-                self.object = form.save()
-
-            self.set_device_cache_data(data)
-
-        return HttpResponseRedirect(self.get_success_url())
+    _number = sorted(list(set(list(range(1, max(numbers) + 2)))
+                          - set(numbers)))[0]
+    return f"{prefix}_{_number}"
 
 
 class TimePickerInput(forms.TimeInput):
@@ -493,7 +531,7 @@ class LimitTimeEditForm(StyledForm):
 
 
 def get_mac_choice_tuple(router: Router) -> list:
-    all_mac_cache_key = get_router_devices_mac_cache_key(router.id)
+    all_mac_cache_key = get_router_all_devices_mac_cache_key(router.id)
     all_macs = DEFAULT_CACHE.get(all_mac_cache_key)
     apply_to_choices = []
     ignored_device_mac = (
@@ -503,7 +541,8 @@ def get_mac_choice_tuple(router: Router) -> list:
         if mac in ignored_device_mac:
             continue
         apply_to_choices.append(
-            (mac, DEFAULT_CACHE.get(get_device_cache_key(mac))["hostname"]))
+            (mac, DEFAULT_CACHE.get(
+                get_device_cache_key(router.id, mac))["hostname"]))
     return apply_to_choices
 
 
@@ -574,7 +613,8 @@ def edit_limit_time(request, router_id, limit_time_name):
                 removed_apply_devices = set(apply_to_initial) - set(new_apply_to)
 
                 for mac in added_apply_devices:
-                    cached_data = DEFAULT_CACHE.get(get_device_cache_key(mac))
+                    cached_data = DEFAULT_CACHE.get(
+                        get_device_cache_key(router_id, mac))
                     cached_limit_time = cached_data.get("limit_time", "")
                     if cached_limit_time == "":
                         cached_limit_time = []
@@ -599,7 +639,8 @@ def edit_limit_time(request, router_id, limit_time_name):
                     )
 
                 for mac in removed_apply_devices:
-                    cached_data = DEFAULT_CACHE.get(get_device_cache_key(mac))
+                    cached_data = DEFAULT_CACHE.get(
+                        get_device_cache_key(router_id, mac))
                     cached_limit_time = cached_data.get("limit_time", "")
                     if cached_limit_time == "":
                         cached_limit_time = []
@@ -626,9 +667,10 @@ def edit_limit_time(request, router_id, limit_time_name):
                 for kwargs, mac, cached_data in set_info_tuple:
                     try:
                         client.set_host_info(**kwargs)
-                        DEFAULT_CACHE.set(get_device_cache_key(mac), cached_data)
+                        DEFAULT_CACHE.set(
+                            get_device_cache_key(router_id, mac), cached_data)
                     except Exception as e:
-                        add_message(request, ERROR, str(e))
+                        messages.add_message(request, messages.ERROR, str(e))
 
         fetch_new_info_and_cache(router_id)
 
@@ -734,7 +776,8 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                 removed_apply_devices = set(apply_to_initial) - set(new_apply_to)
 
                 for mac in added_apply_devices:
-                    cached_data = DEFAULT_CACHE.get(get_device_cache_key(mac))
+                    cached_data = DEFAULT_CACHE.get(
+                        get_device_cache_key(router_id, mac))
                     cached_forbid_domain = cached_data.get("forbid_domain", "")
                     if cached_forbid_domain == "":
                         cached_forbid_domain = []
@@ -759,7 +802,8 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                     )
 
                 for mac in removed_apply_devices:
-                    cached_data = DEFAULT_CACHE.get(get_device_cache_key(mac))
+                    cached_data = DEFAULT_CACHE.get(
+                        get_device_cache_key(router_id, mac))
                     cached_forbid_domain = cached_data.get("forbid_domain", "")
                     if cached_forbid_domain == "":
                         cached_forbid_domain = []
@@ -786,9 +830,11 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                 for kwargs, mac, cached_data in set_info_tuple:
                     try:
                         client.set_host_info(**kwargs)
-                        DEFAULT_CACHE.set(get_device_cache_key(mac), cached_data)
+                        DEFAULT_CACHE.set(
+                            get_device_cache_key(router_id, mac), cached_data)
                     except Exception as e:
-                        add_message(request, ERROR, f"{type(e).__name__}: {str(e)}")
+                        messages.add_message(
+                            request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
 
         fetch_new_info_and_cache(router_id)
 

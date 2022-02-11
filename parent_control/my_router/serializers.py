@@ -133,13 +133,13 @@ class ForbidDomainSerializer(serializers.Serializer):
 
 class InfoSerializer(serializers.Serializer):
     host_info = serializers.DictField(
-        required=False, child=serializers.DictField(), allow_empty=False)
+        required=True, child=serializers.DictField(), allow_empty=False)
 
     forbid_domain = serializers.DictField(
-        required=False, child=serializers.DictField(), allow_empty=False)
+        required=True, child=serializers.DictField(), allow_empty=False)
 
     limit_time = serializers.DictField(
-        required=False, child=serializers.DictField(), allow_empty=False)
+        required=True, child=serializers.DictField(), allow_empty=False)
 
     def get_datatable_data(self, router_id, info_name):
         data = deepcopy(self.data)
@@ -147,11 +147,12 @@ class InfoSerializer(serializers.Serializer):
         forbid_domain_data = data.get("forbid_domain", {})
         limit_time_data = data.get("limit_time", {})
 
-        def get_device_dict_name_by_mac(_mac) -> dict:
+        def get_device_dict_by_mac(_mac) -> dict:
             router = Router.objects.get(id=router_id)
             try:
                 _device = Device.objects.get(router=router, mac_address=_mac)
             except Device.DoesNotExist:
+                # device deleted from db accidentally
                 return {}
             return {"name": host_info.get(_mac, {}).get("hostname", ""),
                     "url": reverse("device-edit", args=(router_id, _device.pk))}
@@ -213,7 +214,7 @@ class InfoSerializer(serializers.Serializer):
                     value[day] = True if int(value[day]) else False
                 value["edit_url"] = reverse("limit_time-edit",
                                             args=[router_id, value[".name"]])
-                value["apply_to"] = [get_device_dict_name_by_mac(mac)
+                value["apply_to"] = [get_device_dict_by_mac(mac)
                                      for mac in value["apply_to"]]
 
                 ret.append([
@@ -233,7 +234,7 @@ class InfoSerializer(serializers.Serializer):
             for value in forbid_domain_data.values():
                 value["edit_url"] = reverse("forbid_domain-edit",
                                             args=[router_id, value[".name"]])
-                value["apply_to"] = [get_device_dict_name_by_mac(mac)
+                value["apply_to"] = [get_device_dict_by_mac(mac)
                                      for mac in value["apply_to"]]
 
                 ret.append([
