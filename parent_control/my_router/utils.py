@@ -37,29 +37,6 @@ class StyledModelForm(StyledFormMixin, forms.ModelForm):
     pass
 
 
-class ReadonlyDict(dict):
-    # This is a read only dict, but key can be visit via attribute
-    # https://stackoverflow.com/a/31049908/3437454
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError as e:
-            raise AttributeError(name) from e
-
-    def __readonly__(self, *args, **kwargs):
-        raise RuntimeError("Cannot modify ReadOnlyDict")
-
-    __setattr__ = __readonly__
-    __setitem__ = __readonly__
-    __delattr__ = __readonly__
-    pop = __readonly__
-    popitem = __readonly__
-    clear = __readonly__
-    update = __readonly__
-    setdefault = __readonly__
-    del __readonly__
-
-
 def deep_update(source, overrides):
     """
     Update a nested dictionary or similar mapping.

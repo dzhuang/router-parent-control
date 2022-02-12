@@ -6,11 +6,15 @@ from unittest import mock
 from crispy_forms.layout import Submit
 from django.test import TestCase
 from django.urls import reverse
-from tests.data_for_tests import (restructured_info_dicts1,
+from tests.data_for_tests import (ADDED_DEVICE_MAC, BLOCKED_DEVICE1_MAC,
+                                  BLOCKED_DEVICE2_MAC, DEVICE0_MAC,
+                                  DEVICE1_MAC, LIMIT_DEVICE1_MAC,
+                                  LIMIT_DEVICE2_MAC, restructured_info_dicts1,
                                   restructured_info_dicts2)
 from tests.factories import RouterFactory
 from tests.mixins import CacheMixin, MockAddMessageMixing, RequestTestMixin
 
+from my_router.constants import days_const
 from my_router.models import Device
 from my_router.utils import (DEFAULT_CACHE,
                              get_cached_forbid_domains_cache_key,
@@ -41,6 +45,11 @@ class MockRouterClientMixin:
         self.mock_set_host_info = set_host_info_patch.start()
         self.addCleanup(set_host_info_patch.stop)
 
+        add_limit_time_patch = mock.patch(
+            "my_router.models.RouterClient.add_limit_time")
+        self.mock_add_limit_time = add_limit_time_patch.start()
+        self.addCleanup(add_limit_time_patch.stop)
+
     def set_get_restructured_info_dicts_ret(self, result):
         # mock client.get_restructured_info_dicts return_value
         self.mock_get_restructured_info_dicts.return_value = result
@@ -68,7 +77,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
         'ip': '192.168.0.119',
         'is_cur_host': '1',
         'limit_time': '',
-        'mac': '00-11-22-33-44-55',
+        'mac': DEVICE0_MAC,
         'plan_rule': [],
         'type': '0',
         'up_limit': '0',
@@ -83,7 +92,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
         'ip': '192.168.0.129',
         'is_cur_host': '1',
         'limit_time': '',
-        'mac': '00-11-22-33-44-55',
+        'mac': DEVICE0_MAC,
         'plan_rule': [],
         'type': '0',
         'up_limit': '0',
@@ -94,7 +103,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
         fetch_new_info_and_cache(self.router.id)
         self.assertDictEqual(
             DEFAULT_CACHE.get(
-                get_router_device_cache_key(self.router.id, "00-11-22-33-44-55")),
+                get_router_device_cache_key(self.router.id, DEVICE0_MAC)),
             self.device_1_cached_value
         )
 
@@ -104,7 +113,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
-                get_router_device_cache_key(self.router.id, "00-11-22-33-44-55")),
+                get_router_device_cache_key(self.router.id, DEVICE0_MAC)),
             self.device_1_cached_value
         )
 
@@ -118,32 +127,32 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
             DEFAULT_CACHE.get(
                 get_cached_forbid_domains_cache_key(
                     self.router.id))["forbid_domain_3"]["apply_to"],
-            ['33-33-33-33-33-33']
+            [LIMIT_DEVICE1_MAC]
         )
 
         # Remove the cache of a device not in dicts1
         DEFAULT_CACHE.delete(
-            get_router_device_cache_key(self.router.id, "44-44-44-44-44-44"))
+            get_router_device_cache_key(self.router.id, LIMIT_DEVICE2_MAC))
 
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
         fetch_new_info_and_cache(self.router.id)
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
-                get_router_device_cache_key(self.router.id, "00-11-22-33-44-55")),
+                get_router_device_cache_key(self.router.id, DEVICE0_MAC)),
             self.device_1_cached_value_changed
         )
         self.assertEqual(
             DEFAULT_CACHE.get(
                 get_cached_limit_times_cache_key(
                     self.router.id))["limit_time_4"]["apply_to"],
-            ["55-55-55-55-55-55"]
+            [ADDED_DEVICE_MAC]
         )
         self.assertEqual(
             sorted(DEFAULT_CACHE.get(
                 get_cached_forbid_domains_cache_key(
                     self.router.id))["forbid_domain_3"]["apply_to"]),
-            ['33-33-33-33-33-33', "55-55-55-55-55-55"]
+            [LIMIT_DEVICE1_MAC, ADDED_DEVICE_MAC]
         )
 
     def test_no_router(self):
@@ -160,7 +169,7 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
         # No fetch_new_info_and_cache called, so as to test cache_info is None
         info = get_all_cached_info_with_online_status(self.router.id)
-        host_info_44 = info["host_info"]["44-44-44-44-44-44"]
+        host_info_44 = info["host_info"][LIMIT_DEVICE2_MAC]
         with self.assertRaises(KeyError):
             host_info_44["online"]  # noqa
         self.assertEqual(host_info_44["limit_time"], "limit_time_1,limit_time_3")
@@ -171,7 +180,7 @@ class GetAllCachedInfoWithOnlineStatusTest(
         fetch_new_info_and_cache(self.router.id)
         info = get_all_cached_info_with_online_status(self.router.id)
 
-        host_info_44 = info["host_info"]["44-44-44-44-44-44"]
+        host_info_44 = info["host_info"][LIMIT_DEVICE2_MAC]
         self.assertFalse(host_info_44["online"])
 
         # limit_time_1 and forbid_domain_1 is removed
@@ -188,10 +197,10 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
         # Remove the cache of a device not in dicts1
         DEFAULT_CACHE.delete(
-            get_router_device_cache_key(self.router.id, "44-44-44-44-44-44"))
+            get_router_device_cache_key(self.router.id, LIMIT_DEVICE2_MAC))
 
         info = get_all_cached_info_with_online_status(self.router.id)
-        self.assertNotIn("44-44-44-44-44-44", info["host_info"])
+        self.assertNotIn(LIMIT_DEVICE2_MAC, info["host_info"])
 
 
 class ListDevicesTest(RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
@@ -209,7 +218,7 @@ class ListDevicesTest(RequestTestMixin, MockRouterClientMixin, CacheMixin, TestC
 
 
 class FetchCachedInfoTest(
-        RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
+    RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
 
     def test_post_forbidden(self):
         for info_name in ["device", "limit_time", "forbid_domain"]:
@@ -334,8 +343,8 @@ class FetchCachedInfoTest(
 
 
 class DeviceUpdateViewTest(
-        RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing,
-        CacheMixin, TestCase):
+    RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing,
+    CacheMixin, TestCase):
 
     def setUp(self):
         super().setUp()
@@ -394,7 +403,7 @@ class DeviceUpdateViewTest(
         fetch_new_info_and_cache(self.router.id)
         self.client.get(self.fetch_cached_info_url())
         assert Device.objects.count() == 6
-        mac = mac or "22-33-44-55-66-77"
+        mac = mac or DEVICE1_MAC
         instance: Device = Device.objects.get(mac=mac)
         data: dict = restructured_info_dicts1["host_info"][mac]
         return instance, data
@@ -463,7 +472,7 @@ class DeviceUpdateViewTest(
         instance.refresh_from_db()
         self.assertEqual(instance.name, new_name)
         self.mock_set_host_info.assert_called_once_with(
-            mac='22-33-44-55-66-77',
+            mac=DEVICE1_MAC,
             name='foobar',
             is_blocked=False,
             down_limit=0,
@@ -499,7 +508,7 @@ class DeviceUpdateViewTest(
         self.assertAddMessageCalledWith("Foo Bar")
 
         self.mock_set_host_info.assert_called_once_with(
-            mac='22-33-44-55-66-77',
+            mac=DEVICE1_MAC,
             name='foobar',
             is_blocked=False,
             down_limit=0,
@@ -527,7 +536,7 @@ class DeviceUpdateViewTest(
             mock_save.assert_not_called()
 
         self.mock_set_host_info.assert_called_once_with(
-            mac='22-33-44-55-66-77',
+            mac=DEVICE1_MAC,
             name='DEVICE1',
             is_blocked=True,
             down_limit=0,
@@ -580,7 +589,7 @@ class DeviceUpdateViewTest(
         expected_value = "limit_time_1,limit_time_3"
 
         self.mock_set_host_info.assert_called_once_with(
-            mac='22-33-44-55-66-77',
+            mac=DEVICE1_MAC,
             name='DEVICE1',
             is_blocked=False,
             down_limit=0,
@@ -609,7 +618,7 @@ class DeviceUpdateViewTest(
         expected_value = "forbid_domain_4,forbid_domain_5"
 
         self.mock_set_host_info.assert_called_once_with(
-            mac='22-33-44-55-66-77',
+            mac=DEVICE1_MAC,
             name='DEVICE1',
             is_blocked=False,
             down_limit=0,
@@ -627,7 +636,7 @@ class DeviceUpdateViewTest(
         self.mock_refresh_info_cache.assert_called_once()
 
     def test_post_another_case(self):
-        mac = "44-44-44-44-44-44"
+        mac = LIMIT_DEVICE2_MAC
         expected_limit_time = "limit_time_5"
         expected_forbid_domain = "forbid_domain_4"
         instance, post_data = self.get_instance_and_post_data(
@@ -683,3 +692,143 @@ class ListLimitTimeTest(
         self.client.logout()
         resp = self.client.get(self.limit_time_list_url())
         self.assertEqual(resp.status_code, 302)
+
+
+class EditLimitTimeTest(
+        RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing, CacheMixin,
+        TestCase):
+    default_limit_time_name = "test_limit_time"
+    default_start_time = "08:00"
+    default_end_time = "09:00"
+    expected_add_limit_time_name = "limit_time_2"
+    default_apply_to = [BLOCKED_DEVICE2_MAC, LIMIT_DEVICE2_MAC]
+
+    def setUp(self):
+        super().setUp()
+        self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
+        fetch_new_info_and_cache(self.router.id)
+
+    def limit_time_edit_url(self, limit_time_name: str | int = "limit_time_1"):
+        return reverse("limit_time-edit", args=(self.router.id, limit_time_name))
+
+    def limit_time_add_url(self):
+        return reverse("limit_time-edit", args=(self.router.id, -1))
+
+    def add_limit_time_post_data(self, disabled_days=None,
+                                 disable_apply_to=False, **kwargs):
+        days = list(days_const.keys())
+        if disabled_days:
+            assert isinstance(disabled_days, list)
+            days = [d for d in days if d not in disabled_days]
+
+        data = dict(
+            name=self.default_limit_time_name,
+            days=days,
+            start_time=self.default_start_time,
+            end_time=self.default_end_time,
+        )
+
+        if not disable_apply_to:
+            data["apply_to "] = self.default_apply_to
+
+        data.update(**kwargs)
+        return data
+
+    def test_get_ok(self):
+        resp = self.client.get(self.limit_time_edit_url())
+        self.assertEqual(resp.status_code, 200)
+
+    def test_get_login_required(self):
+        self.client.logout()
+        resp = self.client.get(self.limit_time_edit_url())
+        self.assertEqual(resp.status_code, 302)
+
+    def test_get_404(self):
+        resp = self.client.get(self.limit_time_edit_url("limit_time_not_exist"))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_get_add_ok(self):
+        resp = self.client.get(self.limit_time_edit_url(limit_time_name=-1))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_add_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_add_url(),
+                data=self.add_limit_time_post_data(disabled_days=["mon"]))
+            self.assertRedirects(
+                resp,
+                expected_url=self.limit_time_edit_url(
+                    limit_time_name=self.expected_add_limit_time_name),
+                status_code=302, fetch_redirect_response=False)
+            self.mock_add_limit_time.assert_called_once_with(
+                limit_time_name=self.expected_add_limit_time_name,
+                desc_name=self.default_limit_time_name,
+                start_time=self.default_start_time,
+                end_time=self.default_end_time,
+                mon=False, tue=True, wed=True,
+                thu=True, fri=True, sat=True,
+                sun=True
+            )
+            self.assertEqual(self.mock_set_host_info.call_count, 2)
+
+            # First call in get_available_name, second when done.
+            self.assertEqual(mock_fetch_new.call_count, 2)
+
+    def test_add_limit_time_errored(self):
+        self.mock_add_limit_time.side_effect = lambda x: exec("raise RuntimeError()")
+
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_add_url(),
+                data=self.add_limit_time_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_limit_time.assert_called_once_with(
+                limit_time_name=self.expected_add_limit_time_name,
+                desc_name=self.default_limit_time_name,
+                start_time=self.default_start_time,
+                end_time=self.default_end_time,
+                mon=True, tue=True, wed=True,
+                thu=True, fri=True, sat=True,
+                sun=True
+            )
+
+            # First call in get_available_name
+            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertAddMessageCallCount(1)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_set_host_info_errored(self):
+        self.mock_set_host_info.side_effect = lambda x: exec("raise RuntimeError()")
+
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_add_url(),
+                data=self.add_limit_time_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_limit_time.assert_called_once_with(
+                limit_time_name=self.expected_add_limit_time_name,
+                desc_name=self.default_limit_time_name,
+                start_time=self.default_start_time,
+                end_time=self.default_end_time,
+                mon=True, tue=True, wed=True,
+                thu=True, fri=True, sat=True,
+                sun=True
+            )
+
+            # First call in get_available_name
+            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertAddMessageCallCount(1)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 1)

@@ -9,11 +9,12 @@ from django.db import transaction
 from django.http import (Http404, HttpResponseForbidden, HttpResponseRedirect,
                          JsonResponse)
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.generic.edit import UpdateView
 from pyrouter.router_client import RouterClient
 
-from my_router.constants import DEFAULT_CACHE
+from my_router.constants import DAYS_CHOICES, DEFAULT_CACHE, days_const
 from my_router.models import Device, Router
 from my_router.serializers import (DeviceDataReverseSerializer,
                                    DeviceJsonSerializer, DeviceModelSerializer,
@@ -393,16 +394,14 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         fetch_new_info_and_cache(self.kwargs["router_id"])
 
 
-def find_available_name(router_id, prefix, fetch_latest=False):
+def find_available_name(router_id, prefix):
     assert prefix in ["limit_time", "forbid_domain"]
+    fetch_new_info_and_cache(router_id)
+
     if prefix == "limit_time":
         all_data: dict = get_cached_limit_times(router_id)
     else:
         all_data: dict = get_cached_forbid_domains(router_id)
-
-    if not all_data or fetch_latest:
-        fetch_new_info_and_cache(router_id)
-        return find_available_name(router_id, prefix)
 
     all_keys: list = list(all_data.keys())
     numbers = []
@@ -430,7 +429,7 @@ def list_limit_time(request, router_id):
 class LimitTimeEditForm(StyledForm):
 
     def __init__(self, add_new, name, start_time, end_time,
-                 mon, tue, wed, thu, fri, sat, sun,
+                 days,
                  apply_to_choices, apply_to_initial, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -449,17 +448,11 @@ class LimitTimeEditForm(StyledForm):
             disabled=disabled, initial=end_time,
             widget=TimePickerInput)
 
-        for day, label, value in [("mon", _("Monday"), mon),
-                                  ("tue", _("Tuesday"), tue),
-                                  ("wed", _("Wednesday"), wed),
-                                  ("thu", _("Thursday"), thu),
-                                  ("fri", _("Friday"), fri),
-                                  ("sat", _("Saturday"), sat),
-                                  ("sun", _("Sunday"), sun)]:
-            true_false = True if value == "1" else False
-            self.fields[day] = forms.BooleanField(
-                label=label, required=False,
-                disabled=disabled, initial=true_false)
+        self.fields["days"] = forms.MultipleChoiceField(
+            label=_("Days"), initial=days,
+            disabled=disabled, choices=DAYS_CHOICES,
+            required=False
+        )
 
         self.fields["apply_to"] = forms.MultipleChoiceField(
             label=_("Apply to"),
@@ -506,30 +499,34 @@ def get_mac_choice_tuple(router: Router) -> list:
 def edit_limit_time(request, router_id, limit_time_name):
     router = get_object_or_404(Router, id=router_id)
 
+    form_description = _("Edit limit time")
     add_new = False
     if limit_time_name == "-1":
         add_new = True
+        form_description = _("Add limit time")
 
     limit_time_infos = get_cached_limit_times(router.id)
 
     limit_time_info = {}
     apply_to_initial = []
     if not add_new:
-        limit_time_info = limit_time_infos[limit_time_name]
+        try:
+            limit_time_info = limit_time_infos[limit_time_name]
+        except KeyError:
+            raise Http404()
         apply_to_initial = limit_time_info["apply_to"]
+
+    days = []
+    for day in days_const.keys():
+        if limit_time_info.get(day) == "1":
+            days.append(day)
 
     kwargs = dict(
         add_new=add_new,
         name=limit_time_info.get("name", ""),
         start_time=limit_time_info.get("start_time", ""),
         end_time=limit_time_info.get("end_time", ""),
-        mon=limit_time_info.get("mon", "1"),
-        tue=limit_time_info.get("tue", "1"),
-        wed=limit_time_info.get("wed", "1"),
-        thu=limit_time_info.get("thu", "1"),
-        fri=limit_time_info.get("fri", "1"),
-        sat=limit_time_info.get("sat", "1"),
-        sun=limit_time_info.get("sun", "1"),
+        days=days,
         apply_to_choices=get_mac_choice_tuple(router),
         apply_to_initial=apply_to_initial)
 
@@ -542,8 +539,7 @@ def edit_limit_time(request, router_id, limit_time_name):
             client = router.get_client()
 
             if add_new:
-                limit_time_name = find_available_name(
-                    router_id, "limit_time", fetch_latest=True)
+                limit_time_name = find_available_name(router_id, "limit_time")
 
                 add_limit_time_kwargs = dict(
                     limit_time_name=limit_time_name,
@@ -552,10 +548,19 @@ def edit_limit_time(request, router_id, limit_time_name):
                     end_time=form.cleaned_data["end_time"]
                 )
 
-                for day in ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]:
-                    add_limit_time_kwargs[day] = form.cleaned_data[day]
+                for day in days_const:
+                    add_limit_time_kwargs[day] = day in form.cleaned_data["days"]
 
-                client.add_limit_time(**add_limit_time_kwargs)
+                try:
+                    client.add_limit_time(**add_limit_time_kwargs)
+                except Exception as e:
+                    messages.add_message(
+                        request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+                    return render(request, "my_router/limit_time-page.html", {
+                        "router_id": router_id,
+                        "form": form,
+                        "form_description": form_description,
+                    })
 
             apply_to_changed = False
             new_apply_to = form.cleaned_data["apply_to"]
@@ -626,16 +631,22 @@ def edit_limit_time(request, router_id, limit_time_name):
                         DEFAULT_CACHE.set(
                             get_router_device_cache_key(router_id, mac), cached_data)
                     except Exception as e:
-                        messages.add_message(request, messages.ERROR, str(e))
+                        messages.add_message(
+                            request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+                        return render(request, "my_router/limit_time-page.html", {
+                            "router_id": router_id,
+                            "form": form,
+                            "form_description": form_description,
+                        })
 
         fetch_new_info_and_cache(router_id)
 
+        if add_new:
+            return HttpResponseRedirect(
+                reverse("limit_time-edit", args=(router_id, limit_time_name)))
+
     else:
         form = LimitTimeEditForm(**kwargs)
-
-    form_description = _("Edit limit time")
-    if add_new:
-        form_description = _("Add limit time")
 
     return render(request, "my_router/limit_time-page.html", {
         "router_id": router_id,
@@ -683,8 +694,10 @@ class ForbidDomainEditForm(StyledForm):
 def edit_forbid_domain(request, router_id, forbid_domain_name):
     router = get_object_or_404(Router, id=router_id)
     add_new = False
+    form_description = _("Edit forbid domain")
     if forbid_domain_name == "-1":
         add_new = True
+        form_description = _("Add forbid domain")
 
     forbid_domain_info = dict()
     apply_to_initial = []
@@ -711,8 +724,7 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
             client = router.get_client()
 
             if add_new:
-                forbid_domain_name = find_available_name(
-                    router_id, "forbid_domain", fetch_latest=True)
+                forbid_domain_name = find_available_name(router_id, "forbid_domain")
                 client.add_forbid_domain(
                     forbid_domain_name, form.cleaned_data["domain"])
 
@@ -789,6 +801,9 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                             request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
 
         fetch_new_info_and_cache(router_id)
+        if add_new:
+            return HttpResponseRedirect(
+                reverse("forbid_domain-edit", args=(router_id, forbid_domain_name)))
 
     else:
         form = ForbidDomainEditForm(**kwargs)
@@ -796,5 +811,5 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
     return render(request, "my_router/forbid_domain-page.html", {
         "router_id": router_id,
         "form": form,
-        "form_description": _("Edit limit time"),
+        "form_description": form_description,
     })
