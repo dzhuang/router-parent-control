@@ -1,5 +1,14 @@
 from copy import deepcopy
 
+DEVICE0_MAC = "00-11-22-33-44-55"
+DEVICE1_MAC = "22-33-44-55-66-77"
+BLOCKED_DEVICE1_MAC = "BB-BB-BB-BB-BB-B1"
+BLOCKED_DEVICE2_MAC = "BB-BB-BB-BB-BB-B2"
+LIMIT_DEVICE1_MAC = "33-33-33-33-33-33"
+LIMIT_DEVICE2_MAC = "44-44-44-44-44-44"
+ADDED_DEVICE_MAC = "55-55-55-55-55-55"
+
+
 restructured_info_dicts1 = {
     'forbid_domain': {
         'forbid_domain_1': {
@@ -34,7 +43,7 @@ restructured_info_dicts1 = {
             'domain': 'www.foo_bar.com'},
     },
     'host_info': {
-        '00-11-22-33-44-55': {
+        DEVICE0_MAC: {
             'blocked': '0',
             'down_limit': '0',
             'down_speed': '0',
@@ -43,12 +52,12 @@ restructured_info_dicts1 = {
             'ip': '192.168.0.119',
             'is_cur_host': '1',
             'limit_time': '',
-            'mac': '00-11-22-33-44-55',
+            'mac': DEVICE0_MAC,
             'plan_rule': [],
             'type': '0',
             'up_limit': '0',
             'up_speed': '0'},
-        '22-33-44-55-66-77': {
+        DEVICE1_MAC: {
             'acs_time': '2022-02-10 12:35:20',
             'ap_radio': 2,
             'blocked': '0',
@@ -62,7 +71,7 @@ restructured_info_dicts1 = {
             'ip': '192.168.0.116',
             'is_cur_host': '0',
             'limit_time': '',
-            'mac': '22-33-44-55-66-77',
+            'mac': DEVICE1_MAC,
             'plan_rule': [],
             'rssi': '-63',
             'ssid': 'SSID',
@@ -72,7 +81,7 @@ restructured_info_dicts1 = {
             'vlan': '0',
             'wifi_mode': 0,
             'wserv_id': 0},
-        'BB-BB-BB-BB-BB-B1': {
+        BLOCKED_DEVICE1_MAC: {
             'blocked': '1',
             'down_limit': '0',
             'down_speed': '0',
@@ -80,13 +89,13 @@ restructured_info_dicts1 = {
             'hostname': 'BLOCKED_DEVICE1',
             'ip': '0.0.0.0',
             'is_cur_host': '0',
-            'limit_time': '',
-            'mac': 'BB-BB-BB-BB-BB-B1',
+            'limit_time': 'limit_time_1',
+            'mac': BLOCKED_DEVICE1_MAC,
             'plan_rule': [],
             'type': '0',
             'up_limit': '0',
             'up_speed': '0'},
-        'BB-BB-BB-BB-BB-B2': {
+        BLOCKED_DEVICE2_MAC: {
             'blocked': '1',
             'down_limit': '0',
             'down_speed': '0',
@@ -95,12 +104,12 @@ restructured_info_dicts1 = {
             'ip': '0.0.0.0',
             'is_cur_host': '0',
             'limit_time': '',
-            'mac': 'BB-BB-BB-BB-BB-B2',
+            'mac': BLOCKED_DEVICE2_MAC,
             'plan_rule': [],
             'type': '0',
             'up_limit': '0',
             'up_speed': '0'},
-        '33-33-33-33-33-33': {
+        LIMIT_DEVICE1_MAC: {
             'acs_time': '2022-02-10 02:46:37',
             'ap_radio': 2,
             'blocked': '0',
@@ -114,7 +123,7 @@ restructured_info_dicts1 = {
             'ip': '192.168.0.115',
             'is_cur_host': '0',
             'limit_time': '',
-            'mac': '33-33-33-33-33-33',
+            'mac': LIMIT_DEVICE1_MAC,
             'plan_rule': [],
             'rssi': '-42',
             'ssid': 'SSID',
@@ -124,7 +133,7 @@ restructured_info_dicts1 = {
             'vlan': '0',
             'wifi_mode': 0,
             'wserv_id': 0},
-        '44-44-44-44-44-44': {
+        LIMIT_DEVICE2_MAC: {
             'acs_time': '2022-02-10 02:46:40',
             'ap_radio': 2,
             'blocked': '0',
@@ -138,7 +147,7 @@ restructured_info_dicts1 = {
             'ip': '192.168.0.111',
             'is_cur_host': '0',
             'limit_time': 'limit_time_1,limit_time_3',
-            'mac': '44-44-44-44-44-44',
+            'mac': LIMIT_DEVICE2_MAC,
             'plan_rule': [],
             'rssi': '-66',
             'ssid': 'SSID',
@@ -214,10 +223,10 @@ restructured_info_dicts1 = {
 
 restructured_info_dicts2 = deepcopy(restructured_info_dicts1)
 _hosts = restructured_info_dicts2["host_info"]
-_hosts["00-11-22-33-44-55"]["ip"] = "192.168.0.129"
-_hosts["22-33-44-55-66-77"]["hostname"] = "DEVICE1_RENAMED"
-_hosts.pop("44-44-44-44-44-44")
-_hosts['55-55-55-55-55-55'] = {
+_hosts[DEVICE0_MAC]["ip"] = "192.168.0.129"
+_hosts[DEVICE1_MAC]["hostname"] = "DEVICE1_RENAMED"
+_hosts.pop(LIMIT_DEVICE2_MAC)
+_hosts[ADDED_DEVICE_MAC] = {
     'acs_time': '2022-02-10 02:46:37',
     'ap_radio': 2,
     'blocked': '0',
@@ -231,7 +240,7 @@ _hosts['55-55-55-55-55-55'] = {
     'ip': '192.168.0.188',
     'is_cur_host': '0',
     'limit_time': 'limit_time_4',
-    'mac': '55-55-55-55-55-55',
+    'mac': ADDED_DEVICE_MAC,
     'plan_rule': [],
     'rssi': '-41',
     'ssid': 'SSID',

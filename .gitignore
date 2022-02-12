@@ -1,10 +1,10 @@
 /.idea
 **/.env
 **/.venv
-**/db.sqlite3
+**/*.sqlite3
 **/node_modules
 **/__pycache__
 **/*.ipynb
 **/*.pyc
 **/local_settings.py
-/parent_control/*.sqlite3
+**/.coverage
