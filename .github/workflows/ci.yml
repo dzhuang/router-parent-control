@@ -58,7 +58,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq gettext glpk-utils
+          sudo apt-get install -qq gettext
       - name: Run pytest
         working-directory: ./parent_control
         run: |
@@ -66,7 +66,7 @@ jobs:
       - name: Test make and compile messages
         working-directory: ./parent_control
         env:
-          JV_TRANSPORT_LOCAL_TEST_SETTINGS: tests/settings_for_tests.py
+          PARENT_CONTROL_FETCH_INFO_INTERVAL: tests/settings_for_tests.py
         run: |
           python manage.py makemessages -l zh_Hans
           python manage.py compilemessages
