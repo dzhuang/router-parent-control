@@ -23,8 +23,9 @@ from my_router.utils import (StyledForm, StyledModelForm,
                              get_cached_forbid_domains_cache_key,
                              get_cached_limit_times,
                              get_cached_limit_times_cache_key,
-                             get_device_cache_key,
-                             get_router_all_devices_mac_cache_key)
+                             get_device_db_cache_key,
+                             get_router_all_devices_mac_cache_key,
+                             get_router_device_cache_key)
 
 
 def routers_context_processor(request):
@@ -63,13 +64,13 @@ def fetch_new_info_and_cache(router_id):
     DEFAULT_CACHE.set(all_mac_cache_key, all_cached_macs)
 
     for mac, info in host_info.items():
-        DEFAULT_CACHE.set(get_device_cache_key(router_id, mac), info)
+        DEFAULT_CACHE.set(get_router_device_cache_key(router_id, mac), info)
 
     for mac in all_cached_macs:
         # update from ALL device the dict of limit_time and forbid_domain
         # todo: if device removed, delete the cache
         device_info = DEFAULT_CACHE.get(
-            get_device_cache_key(router_id, mac), None)
+            get_router_device_cache_key(router_id, mac), None)
 
         if not device_info:
             # Avoiding device cache deleted
@@ -135,7 +136,7 @@ def get_all_cached_info_with_online_status(router_id):
         if mac not in host_info:
             # devices not present in current cached all_info
             this_device_info = DEFAULT_CACHE.get(
-                get_device_cache_key(router_id, mac), {})
+                get_router_device_cache_key(router_id, mac), {})
 
             if not this_device_info:
                 # Avoiding device cache deleted
@@ -184,9 +185,23 @@ def fetch_cached_info(request, router_id, info_name):
                 else:
                     instance = None
                 d_serializer = DeviceModelSerializer(instance=instance, data=data)
-                assert d_serializer.is_valid()
-                with transaction.atomic():
-                    d_serializer.save(router=router)
+                d_serializer.is_valid(raise_exception=True)
+                if instance is None:
+                    with transaction.atomic():
+                        d_serializer.save(router=router)
+                else:
+                    # When fetching remote data, only name and mac is saved in
+                    # database. So it is expensive to save/update each existing
+                    # device at each fetch.
+                    # We cache the name for comparing before determine whether to do
+                    # the update.
+                    mac = d_serializer.validated_data["mac"]
+                    name = d_serializer.validated_data["name"]
+                    cached_name = DEFAULT_CACHE.get(get_device_db_cache_key(mac))
+
+                    if name != cached_name:
+                        with transaction.atomic():
+                            d_serializer.save(router=router)
 
             return JsonResponse(
                 data=serializer.get_datatable_data(router_id, info_name),
@@ -267,7 +282,7 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         try:
             serializer = DeviceJsonSerializer(
                 data=DEFAULT_CACHE.get(
-                    get_device_cache_key(
+                    get_router_device_cache_key(
                         self.kwargs["router_id"], self.object.mac))
             )
             serializer.is_valid(raise_exception=True)
@@ -359,16 +374,16 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         serializer = DeviceDataReverseSerializer(data=form_data)
         serializer.is_valid(raise_exception=True)
 
-        cache_key = get_device_cache_key(self.kwargs["router_id"], self.object.mac)
+        cache_key = get_router_device_cache_key(self.kwargs["router_id"],
+                                                self.object.mac)
         device_cached_data = DEFAULT_CACHE.get(cache_key)
         device_cached_data.update(**serializer.data)
 
         DEFAULT_CACHE.set(
-            get_device_cache_key(self.kwargs["router_id"],
-                                 self.object.mac),
+            get_router_device_cache_key(self.kwargs["router_id"],
+                                        self.object.mac),
             device_cached_data
         )
-        assert isinstance(device_cached_data["limit_time"], str)
 
     def refresh_all_info_cache(self):
         # Cached limit_time and forbid_domain can only be updated by
@@ -483,7 +498,7 @@ def get_mac_choice_tuple(router: Router) -> list:
             continue
         apply_to_choices.append(
             (mac, DEFAULT_CACHE.get(
-                get_device_cache_key(router.id, mac))["hostname"]))
+                get_router_device_cache_key(router.id, mac))["hostname"]))
     return apply_to_choices
 
 
@@ -555,7 +570,7 @@ def edit_limit_time(request, router_id, limit_time_name):
 
                 for mac in added_apply_devices:
                     cached_data = DEFAULT_CACHE.get(
-                        get_device_cache_key(router_id, mac))
+                        get_router_device_cache_key(router_id, mac))
                     cached_limit_time = cached_data.get("limit_time", "")
                     if cached_limit_time == "":
                         cached_limit_time = []
@@ -581,7 +596,7 @@ def edit_limit_time(request, router_id, limit_time_name):
 
                 for mac in removed_apply_devices:
                     cached_data = DEFAULT_CACHE.get(
-                        get_device_cache_key(router_id, mac))
+                        get_router_device_cache_key(router_id, mac))
                     cached_limit_time = cached_data.get("limit_time", "")
                     if cached_limit_time == "":
                         cached_limit_time = []
@@ -609,7 +624,7 @@ def edit_limit_time(request, router_id, limit_time_name):
                     try:
                         client.set_host_info(**kwargs)
                         DEFAULT_CACHE.set(
-                            get_device_cache_key(router_id, mac), cached_data)
+                            get_router_device_cache_key(router_id, mac), cached_data)
                     except Exception as e:
                         messages.add_message(request, messages.ERROR, str(e))
 
@@ -714,7 +729,7 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
 
                 for mac in added_apply_devices:
                     cached_data = DEFAULT_CACHE.get(
-                        get_device_cache_key(router_id, mac))
+                        get_router_device_cache_key(router_id, mac))
                     cached_forbid_domain = cached_data.get("forbid_domain", "")
                     if cached_forbid_domain == "":
                         cached_forbid_domain = []
@@ -740,7 +755,7 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
 
                 for mac in removed_apply_devices:
                     cached_data = DEFAULT_CACHE.get(
-                        get_device_cache_key(router_id, mac))
+                        get_router_device_cache_key(router_id, mac))
                     cached_forbid_domain = cached_data.get("forbid_domain", "")
                     if cached_forbid_domain == "":
                         cached_forbid_domain = []
@@ -768,7 +783,7 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                     try:
                         client.set_host_info(**kwargs)
                         DEFAULT_CACHE.set(
-                            get_device_cache_key(router_id, mac), cached_data)
+                            get_router_device_cache_key(router_id, mac), cached_data)
                     except Exception as e:
                         messages.add_message(
                             request, messages.ERROR, f"{type(e).__name__}: {str(e)}")

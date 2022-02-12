@@ -5,9 +5,10 @@ from collections.abc import Mapping
 from django import forms
 
 from my_router.constants import (CACHE_VERSION, DEFAULT_CACHE,
-                                 DEVICE_CACHE_KEY_PATTERN,
+                                 DEVICE_DB_CACHE_KEY_PATTERN,
                                  FORBID_DOMAINS_CACHE_KEY_PATTER,
                                  LIMIT_TIMES_CACHE_KEY_PATTER,
+                                 ROUTER_DEVICE_CACHE_KEY_PATTERN,
                                  ROUTER_DEVICE_MAC_ADDRESSES_CACHE_KEY_PATTERN,
                                  ROUTER_DEVICES_CACHE_KEY_PATTERN)
 
@@ -77,8 +78,8 @@ class CacheDataDoesNotExist(Exception):
     pass
 
 
-def get_device_cache_key(router_id, mac_address):
-    return DEVICE_CACHE_KEY_PATTERN.format(
+def get_router_device_cache_key(router_id, mac_address):
+    return ROUTER_DEVICE_CACHE_KEY_PATTERN.format(
         router_id=router_id, mac=mac_address, cache_version=CACHE_VERSION)
 
 
@@ -112,3 +113,7 @@ def get_cached_limit_times(router_id):
 def get_cached_forbid_domains(router_id):
     return DEFAULT_CACHE.get(
         get_cached_forbid_domains_cache_key(router_id), None)
+
+
+def get_device_db_cache_key(mac):
+    return DEVICE_DB_CACHE_KEY_PATTERN.format(mac=mac, cache_version=CACHE_VERSION)
