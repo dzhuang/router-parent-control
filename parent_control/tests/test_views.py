@@ -6,9 +6,9 @@ from unittest import mock
 from crispy_forms.layout import Submit
 from django.test import TestCase
 from django.urls import reverse
-from tests.data_for_tests import (ADDED_DEVICE_MAC, BLOCKED_DEVICE1_MAC,
-                                  BLOCKED_DEVICE2_MAC, DEVICE0_MAC,
-                                  DEVICE1_MAC, LIMIT_DEVICE1_MAC,
+from tests.data_for_tests import ADDED_DEVICE_MAC  # noqa
+from tests.data_for_tests import (BLOCKED_DEVICE1_MAC, BLOCKED_DEVICE2_MAC,
+                                  DEVICE0_MAC, DEVICE1_MAC, LIMIT_DEVICE1_MAC,
                                   LIMIT_DEVICE2_MAC, restructured_info_dicts1,
                                   restructured_info_dicts2)
 from tests.factories import RouterFactory
@@ -218,7 +218,7 @@ class ListDevicesTest(RequestTestMixin, MockRouterClientMixin, CacheMixin, TestC
 
 
 class FetchCachedInfoTest(
-    RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
+        RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
 
     def test_post_forbidden(self):
         for info_name in ["device", "limit_time", "forbid_domain"]:
@@ -343,8 +343,8 @@ class FetchCachedInfoTest(
 
 
 class DeviceUpdateViewTest(
-    RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing,
-    CacheMixin, TestCase):
+        RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing,
+        CacheMixin, TestCase):
 
     def setUp(self):
         super().setUp()
