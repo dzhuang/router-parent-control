@@ -15,7 +15,7 @@ from my_router.models import Device
 from my_router.utils import (DEFAULT_CACHE,
                              get_cached_forbid_domains_cache_key,
                              get_cached_limit_times_cache_key,
-                             get_device_cache_key)
+                             get_router_device_cache_key)
 from my_router.views import (fetch_new_info_and_cache,
                              get_all_cached_info_with_online_status)
 
@@ -94,7 +94,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
         fetch_new_info_and_cache(self.router.id)
         self.assertDictEqual(
             DEFAULT_CACHE.get(
-                get_device_cache_key(self.router.id, "00-11-22-33-44-55")),
+                get_router_device_cache_key(self.router.id, "00-11-22-33-44-55")),
             self.device_1_cached_value
         )
 
@@ -104,7 +104,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
-                get_device_cache_key(self.router.id, "00-11-22-33-44-55")),
+                get_router_device_cache_key(self.router.id, "00-11-22-33-44-55")),
             self.device_1_cached_value
         )
 
@@ -123,14 +123,14 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
 
         # Remove the cache of a device not in dicts1
         DEFAULT_CACHE.delete(
-            get_device_cache_key(self.router.id, "44-44-44-44-44-44"))
+            get_router_device_cache_key(self.router.id, "44-44-44-44-44-44"))
 
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
         fetch_new_info_and_cache(self.router.id)
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
-                get_device_cache_key(self.router.id, "00-11-22-33-44-55")),
+                get_router_device_cache_key(self.router.id, "00-11-22-33-44-55")),
             self.device_1_cached_value_changed
         )
         self.assertEqual(
@@ -158,7 +158,7 @@ class GetAllCachedInfoWithOnlineStatusTest(
     def test_fetched_new_info(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
 
-        # No fetch_new_info_and_cache called to test cache_info is None
+        # No fetch_new_info_and_cache called, so as to test cache_info is None
         info = get_all_cached_info_with_online_status(self.router.id)
         host_info_44 = info["host_info"]["44-44-44-44-44-44"]
         with self.assertRaises(KeyError):
@@ -188,7 +188,7 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
         # Remove the cache of a device not in dicts1
         DEFAULT_CACHE.delete(
-            get_device_cache_key(self.router.id, "44-44-44-44-44-44"))
+            get_router_device_cache_key(self.router.id, "44-44-44-44-44-44"))
 
         info = get_all_cached_info_with_online_status(self.router.id)
         self.assertNotIn("44-44-44-44-44-44", info["host_info"])
@@ -236,6 +236,22 @@ class FetchCachedInfoTest(
                 resp = self.client.get(
                     self.fetch_cached_info_url(info_name=info_name))
         self.assertEqual(resp.status_code, 200)
+
+    def test_info_cached(self):
+        # no save for device not changed when fetch_cached_info
+        self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
+        fetch_new_info_and_cache(self.router.id)
+        self.client.get(self.fetch_cached_info_url())
+
+        with mock.patch("my_router.models.Device.save") as mock_save:
+            fetch_new_info_and_cache(self.router.id)
+            self.client.get(self.fetch_cached_info_url())
+            mock_save.assert_not_called()
+
+            self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
+            fetch_new_info_and_cache(self.router.id)
+            self.client.get(self.fetch_cached_info_url())
+            self.assertEqual(mock_save.call_count, 2)
 
     def fetch_2_info(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
@@ -457,7 +473,7 @@ class DeviceUpdateViewTest(
 
         self.assertEqual(
             self.test_cache.get(
-                get_device_cache_key(
+                get_router_device_cache_key(
                     self.router.id, instance.mac))["hostname"],
             new_name
         )
@@ -494,7 +510,7 @@ class DeviceUpdateViewTest(
         # not changed
         self.assertEqual(
             self.test_cache.get(
-                get_device_cache_key(
+                get_router_device_cache_key(
                     self.router.id, instance.mac))["hostname"],
             "DEVICE1"
         )
@@ -521,7 +537,7 @@ class DeviceUpdateViewTest(
 
         self.assertEqual(
             self.test_cache.get(
-                get_device_cache_key(
+                get_router_device_cache_key(
                     self.router.id, instance.mac))["blocked"],
             "1"
         )
@@ -542,7 +558,7 @@ class DeviceUpdateViewTest(
 
             self.assertEqual(
                 self.test_cache.get(
-                    get_device_cache_key(
+                    get_router_device_cache_key(
                         self.router.id, instance.mac))[_field],
                 value
             )
@@ -574,7 +590,7 @@ class DeviceUpdateViewTest(
 
         self.assertEqual(
             self.test_cache.get(
-                get_device_cache_key(
+                get_router_device_cache_key(
                     self.router.id, instance.mac))["limit_time"],
             expected_value
         )
@@ -603,7 +619,7 @@ class DeviceUpdateViewTest(
 
         self.assertEqual(
             self.test_cache.get(
-                get_device_cache_key(
+                get_router_device_cache_key(
                     self.router.id, instance.mac))["forbid_domain"],
             expected_value
         )
@@ -639,16 +655,31 @@ class DeviceUpdateViewTest(
 
         self.assertEqual(
             self.test_cache.get(
-                get_device_cache_key(
+                get_router_device_cache_key(
                     self.router.id, instance.mac))["forbid_domain"],
             expected_forbid_domain
         )
 
         self.assertEqual(
             self.test_cache.get(
-                get_device_cache_key(
+                get_router_device_cache_key(
                     self.router.id, instance.mac))["limit_time"],
             expected_limit_time
         )
 
         self.mock_refresh_info_cache.assert_called_once()
+
+
+class ListLimitTimeTest(
+        RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
+    def limit_time_list_url(self):
+        return reverse("limit_time-list", args=(self.router.id,))
+
+    def test_get_ok(self):
+        resp = self.client.get(self.limit_time_list_url())
+        self.assertEqual(resp.status_code, 200)
+
+    def test_login_required(self):
+        self.client.logout()
+        resp = self.client.get(self.limit_time_list_url())
+        self.assertEqual(resp.status_code, 302)

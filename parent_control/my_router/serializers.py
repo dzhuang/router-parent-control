@@ -9,7 +9,7 @@ from rest_framework import serializers
 
 from my_router.constants import DEFAULT_CACHE
 from my_router.models import Device, Router
-from my_router.utils import CacheDataDoesNotExist, get_device_cache_key
+from my_router.utils import CacheDataDoesNotExist, get_router_device_cache_key
 
 
 class BoolToZeroOneField(serializers.Field):
@@ -79,7 +79,7 @@ def split_name(s):
 class DeviceModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
-        fields = ["name", "mac", "added_datetime"]
+        fields = ["name", "mac", "known", "ignore", "added_datetime"]
 
 
 class DeviceDataReverseSerializer(serializers.Serializer):
@@ -201,7 +201,7 @@ class InfoSerializer(serializers.Serializer):
             except Device.DoesNotExist:
                 # device deleted from db accidentally
                 return {}
-            return {"name": host_info.get(_mac, {}).get("hostname", ""),
+            return {"name": host_info.get(_mac, {}).get("name", ""),
                     "url": reverse("device-edit", args=(router_id, _device.pk))}
 
         def get_rule_list(
@@ -257,7 +257,6 @@ class InfoSerializer(serializers.Serializer):
                                             args=[router_id, value["identifier"]])
                 value["apply_to"] = [get_device_dict_by_mac(mac)
                                      for mac in value["apply_to"]]
-
                 ret.append([
                     value["index_on_router"],
                     value["name"],
@@ -290,7 +289,8 @@ class InfoSerializer(serializers.Serializer):
     def get_device_update_form_kwargs(self, router_id, mac):
         all_data = deepcopy(self.data)
 
-        device_cached_data = DEFAULT_CACHE.get(get_device_cache_key(router_id, mac))
+        device_cached_data = DEFAULT_CACHE.get(
+            get_router_device_cache_key(router_id, mac))
         if device_cached_data is None:
             raise CacheDataDoesNotExist()
 

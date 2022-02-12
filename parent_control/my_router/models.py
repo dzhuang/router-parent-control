@@ -11,6 +11,7 @@ from pyrouter.router_client import RouterClient
 
 from my_router.constants import ROUTER_STATUS_CHOICES, router_status
 from my_router.fields import MACAddressField
+from my_router.utils import DEFAULT_CACHE, get_device_db_cache_key
 
 
 class Router(models.Model):
@@ -133,6 +134,9 @@ class Device(models.Model):
                     pass
             kwargs['update_fields'] = changed_fields
         super().save(*args, **kwargs)
+
+    def update_cache(self):
+        DEFAULT_CACHE.set(get_device_db_cache_key(self.mac), self.name)
 
     def __str__(self):
         return _("{device} on {router}").format(

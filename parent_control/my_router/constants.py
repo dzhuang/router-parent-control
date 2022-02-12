@@ -10,7 +10,9 @@ FORBID_DOMAINS_CACHE_KEY_PATTER = "forbid_domain:{router_id}:{cache_version}"
 
 ROUTER_DEVICE_MAC_ADDRESSES_CACHE_KEY_PATTERN = (
     "{router_id}:mac_addresses:{cache_version}")
-DEVICE_CACHE_KEY_PATTERN = "{router_id}:device:{mac}{cache_version}"
+ROUTER_DEVICE_CACHE_KEY_PATTERN = "{router_id}:device:{mac}{cache_version}"
+
+DEVICE_DB_CACHE_KEY_PATTERN = "db-cache:{mac}:{cache_version}"
 
 
 class router_status:  # noqa
