@@ -89,7 +89,7 @@ restructured_info_dicts1 = {
             'hostname': 'BLOCKED_DEVICE1',
             'ip': '0.0.0.0',
             'is_cur_host': '0',
-            'limit_time': '',
+            'limit_time': 'limit_time_1',
             'mac': BLOCKED_DEVICE1_MAC,
             'plan_rule': [],
             'type': '0',

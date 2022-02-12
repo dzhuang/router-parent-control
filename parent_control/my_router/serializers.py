@@ -209,9 +209,14 @@ class InfoSerializer(serializers.Serializer):
                 edit_url_name) -> list:
             _ret = []
             for identifier in identifiers:
-                _ret.append(
-                    {"name": _dict[identifier].get(attribute_name, ""),
-                     "url": reverse(edit_url_name, args=(router_id, identifier,))})
+                try:
+                    _ret.append(
+                        {"name": _dict[identifier].get(attribute_name, ""),
+                         "url": reverse(
+                             edit_url_name, args=(router_id, identifier))})
+                except KeyError:
+                    # happens when the limit_time or forbid_domain has been removed
+                    continue
 
             return _ret
 

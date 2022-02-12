@@ -565,8 +565,9 @@ def edit_limit_time(request, router_id, limit_time_name):
             apply_to_changed = False
             new_apply_to = form.cleaned_data["apply_to"]
             if form.has_changed() and "apply_to" in form.changed_data:
-                if set(new_apply_to) != set(apply_to_initial):
-                    apply_to_changed = True
+                # In edit mode, with only apply_to editable, form_change
+                # means apply_to changed
+                apply_to_changed = True
 
             if apply_to_changed:
                 set_info_tuple = []
@@ -601,12 +602,13 @@ def edit_limit_time(request, router_id, limit_time_name):
 
                 for mac in removed_apply_devices:
                     cached_data = DEFAULT_CACHE.get(
-                        get_router_device_cache_key(router_id, mac))
+                        get_router_device_cache_key(router_id, mac), {})
                     cached_limit_time = cached_data.get("limit_time", "")
                     if cached_limit_time == "":
-                        cached_limit_time = []
-                    else:
-                        cached_limit_time = cached_limit_time.split(",")
+                        # when will this happen?
+                        continue
+
+                    cached_limit_time = cached_limit_time.split(",")
 
                     cached_limit_time = list(
                         set(cached_limit_time) - {limit_time_name})
@@ -639,11 +641,12 @@ def edit_limit_time(request, router_id, limit_time_name):
                             "form_description": form_description,
                         })
 
-        fetch_new_info_and_cache(router_id)
+            if form.has_changed():
+                fetch_new_info_and_cache(router_id)
 
-        if add_new:
-            return HttpResponseRedirect(
-                reverse("limit_time-edit", args=(router_id, limit_time_name)))
+            if add_new:
+                return HttpResponseRedirect(
+                    reverse("limit_time-edit", args=(router_id, limit_time_name)))
 
     else:
         form = LimitTimeEditForm(**kwargs)
@@ -731,8 +734,9 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
             apply_to_changed = False
             new_apply_to = form.cleaned_data["apply_to"]
             if form.has_changed() and "apply_to" in form.changed_data:
-                if set(new_apply_to) != set(apply_to_initial):
-                    apply_to_changed = True
+                # In edit mode, with only apply_to editable, form_change
+                # means apply_to changed
+                apply_to_changed = True
 
             if apply_to_changed:
                 set_info_tuple = []

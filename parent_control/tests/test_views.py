@@ -6,9 +6,9 @@ from unittest import mock
 from crispy_forms.layout import Submit
 from django.test import TestCase
 from django.urls import reverse
-from tests.data_for_tests import ADDED_DEVICE_MAC  # noqa
-from tests.data_for_tests import (BLOCKED_DEVICE1_MAC, BLOCKED_DEVICE2_MAC,
-                                  DEVICE0_MAC, DEVICE1_MAC, LIMIT_DEVICE1_MAC,
+from tests.data_for_tests import (ADDED_DEVICE_MAC, BLOCKED_DEVICE1_MAC,
+                                  BLOCKED_DEVICE2_MAC, DEVICE0_MAC,
+                                  DEVICE1_MAC, LIMIT_DEVICE1_MAC,
                                   LIMIT_DEVICE2_MAC, restructured_info_dicts1,
                                   restructured_info_dicts2)
 from tests.factories import RouterFactory
@@ -734,6 +734,13 @@ class EditLimitTimeTest(
         data.update(**kwargs)
         return data
 
+    def edit_limit_time_post_data(self, **kwargs):
+        # todo: Currently only test change of apply_to
+        data = dict(apply_to=[])
+
+        data.update(**kwargs)
+        return data
+
     def test_get_ok(self):
         resp = self.client.get(self.limit_time_edit_url())
         self.assertEqual(resp.status_code, 200)
@@ -777,6 +784,24 @@ class EditLimitTimeTest(
             # First call in get_available_name, second when done.
             self.assertEqual(mock_fetch_new.call_count, 2)
 
+    def test_add__no_apply_to(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_add_url(),
+                data=self.add_limit_time_post_data(disable_apply_to=True))
+            self.assertRedirects(
+                resp,
+                expected_url=self.limit_time_edit_url(
+                    limit_time_name=self.expected_add_limit_time_name),
+                status_code=302, fetch_redirect_response=False)
+            self.mock_add_limit_time.assert_called_once()
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+            # First call in get_available_name, second when done.
+            self.assertEqual(mock_fetch_new.call_count, 2)
+
     def test_add_limit_time_errored(self):
         self.mock_add_limit_time.side_effect = lambda x: exec("raise RuntimeError()")
 
@@ -805,7 +830,7 @@ class EditLimitTimeTest(
             # set_host_info is not reached
             self.assertEqual(self.mock_set_host_info.call_count, 0)
 
-    def test_set_host_info_errored(self):
+    def test_add_set_host_info_errored(self):
         self.mock_set_host_info.side_effect = lambda x: exec("raise RuntimeError()")
 
         with mock.patch(
@@ -832,3 +857,77 @@ class EditLimitTimeTest(
 
             # set_host_info is not reached
             self.assertEqual(self.mock_set_host_info.call_count, 1)
+
+    def test_add_form_invalid(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_add_url(),
+                data=self.add_limit_time_post_data(end_time="07:00"))
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_limit_time.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 0)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_edit_not_changed_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_edit_url(limit_time_name="limit_time_4"),
+                data=self.edit_limit_time_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_limit_time.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 0)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_edit_apply_to_not_changed_ok(self):
+        # this case has apply_to but not changed
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_edit_url(),
+                data=self.edit_limit_time_post_data(
+                    apply_to=[BLOCKED_DEVICE1_MAC, LIMIT_DEVICE2_MAC]))
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_limit_time.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 0)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_edit_apply_to_changed_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+
+            resp = self.client.post(
+                self.limit_time_edit_url(),
+                data=self.edit_limit_time_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_limit_time.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 2)
