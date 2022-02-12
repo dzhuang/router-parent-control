@@ -4,14 +4,22 @@ on:
     branches:
       - main
     paths:
+      - '!**.png'
+      - '!**.jpg'
+      - '!**.jpeg'
       - '!**.md'
+      - '!**.rst'
       - '!**.ipynb'
       - '!docker-compose-example.yml'
       - 'parent_control/**'
       - '.github/**'
   pull_request:
     paths:
+      - '!**.png'
+      - '!**.jpg'
+      - '!**.jpeg'
       - '!**.md'
+      - '!**.rst'
       - '!**.ipynb'
       - '!docker-compose-example.yml'
       - 'parent_control/**'
