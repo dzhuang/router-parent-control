@@ -758,15 +758,17 @@ class EditLimitTimeTest(
         resp = self.client.get(self.limit_time_edit_url())
         self.assertEqual(resp.status_code, 200)
 
-    # def test_get_with_ignored_device_ok(self):
-    #     self.client.get()
-    #     print(Device.objects.all())
-    #     device_ignored = Device.objects.get(mac=BLOCKED_DEVICE1_MAC)
-    #     device_ignored.ignore = True
-    #     device_ignored.save()
-    #     resp = self.client.get(self.limit_time_edit_url())
-    #     self.assertEqual(resp.status_code, 200)
-    #     print(self.get_response_context_value_by_name(resp, "form"))
+    def test_get_with_ignored_device_ok(self):
+        # ignored device not shown in edit limit_time form
+        device_ignored = Device.objects.get(mac=BLOCKED_DEVICE1_MAC)
+        device_ignored.ignore = True
+        device_ignored.save()
+        resp = self.client.get(self.limit_time_edit_url())
+        self.assertEqual(resp.status_code, 200)
+        form = self.get_response_context_value_by_name(resp, "form")
+        mac_choices = [k for k,v in form.fields["apply_to"].choices]
+        self.assertNotIn(BLOCKED_DEVICE1_MAC, mac_choices)
+        self.assertIn(BLOCKED_DEVICE2_MAC, mac_choices)
 
     def test_get_login_required(self):
         self.client.logout()
