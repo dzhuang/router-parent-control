@@ -20,7 +20,7 @@ from my_router.utils import (DEFAULT_CACHE,
                              get_cached_forbid_domains_cache_key,
                              get_cached_limit_times_cache_key,
                              get_router_device_cache_key)
-from my_router.views import (fetch_new_info_and_cache,
+from my_router.views import (fetch_new_info_save_and_set_cache,
                              get_all_cached_info_with_online_status)
 
 
@@ -29,7 +29,7 @@ class MockRouterClientMixin:
         super().setUp()
 
         with mock.patch(
-                "my_router.receivers.fetch_new_info_and_cache"
+                "my_router.receivers.fetch_new_info_save_and_set_cache"
         ) as mock_fetch_and_cache:
             mock_fetch_and_cache.return_value = None
             self.router = RouterFactory()
@@ -49,6 +49,11 @@ class MockRouterClientMixin:
             "my_router.models.RouterClient.add_limit_time")
         self.mock_add_limit_time = add_limit_time_patch.start()
         self.addCleanup(add_limit_time_patch.stop)
+
+        add_forbid_domain_patch = mock.patch(
+            "my_router.models.RouterClient.add_forbid_domain")
+        self.mock_add_forbid_domain = add_forbid_domain_patch.start()
+        self.addCleanup(add_forbid_domain_patch.stop)
 
     def set_get_restructured_info_dicts_ret(self, result):
         # mock client.get_restructured_info_dicts return_value
@@ -100,16 +105,17 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
 
     def test_ok(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
         self.assertDictEqual(
             DEFAULT_CACHE.get(
                 get_router_device_cache_key(self.router.id, DEVICE0_MAC)),
             self.device_1_cached_value
         )
+        self.assertEqual(Device.objects.count(), 6)
 
     def test_device_cache_deleted(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
@@ -135,7 +141,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
             get_router_device_cache_key(self.router.id, LIMIT_DEVICE2_MAC))
 
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
@@ -158,7 +164,17 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
     def test_no_router(self):
         self.router.delete()
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
+
+    def test_fetch_new_info_save_and_set_cache_ret_invalid(self):
+        # An invalid result
+        with mock.patch("my_router.views.DEFAULT_CACHE.set") as mock_cache_set:
+            self.set_get_restructured_info_dicts_ret({})
+            result = fetch_new_info_save_and_set_cache(self.router.id)
+            self.assertIsNone(result)
+
+            # assert no cache set call
+            mock_cache_set.assert_not_called()
 
 
 class GetAllCachedInfoWithOnlineStatusTest(
@@ -167,7 +183,8 @@ class GetAllCachedInfoWithOnlineStatusTest(
     def test_fetched_new_info(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
 
-        # No fetch_new_info_and_cache called, so as to test cache_info is None
+        # No fetch_new_info_save_and_set_cache called,
+        # so as to test cache_info is None
         info = get_all_cached_info_with_online_status(self.router.id)
         host_info_44 = info["host_info"][LIMIT_DEVICE2_MAC]
         with self.assertRaises(KeyError):
@@ -177,7 +194,7 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
         # new info fetched
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
         info = get_all_cached_info_with_online_status(self.router.id)
 
         host_info_44 = info["host_info"][LIMIT_DEVICE2_MAC]
@@ -189,11 +206,11 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
     def test_device_cache_deleted(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
         # new info fetched
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
         # Remove the cache of a device not in dicts1
         DEFAULT_CACHE.delete(
@@ -249,31 +266,32 @@ class FetchCachedInfoTest(
     def test_info_cached(self):
         # no save for device not changed when fetch_cached_info
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
         self.client.get(self.fetch_cached_info_url())
 
         with mock.patch("my_router.models.Device.save") as mock_save:
-            fetch_new_info_and_cache(self.router.id)
+            fetch_new_info_save_and_set_cache(self.router.id)
             self.client.get(self.fetch_cached_info_url())
             mock_save.assert_not_called()
 
             self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-            fetch_new_info_and_cache(self.router.id)
+            fetch_new_info_save_and_set_cache(self.router.id)
             self.client.get(self.fetch_cached_info_url())
             self.assertEqual(mock_save.call_count, 2)
 
     def fetch_2_info(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
     def test_fetch_cached_device_info(self):
         self.fetch_2_info()
+        self.assertEqual(Device.objects.count(), 7)
+
         resp = self.client.get(self.fetch_cached_info_url())
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(Device.objects.count(), 7)
         result = resp.json()
         for device_result in result:
             (_id, hostname, edit_url, mac, asc_time, online, ip, is_blocked,
@@ -302,18 +320,18 @@ class FetchCachedInfoTest(
 
     def test_fetch_cached_device_info_twice(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
-        resp = self.client.get(self.fetch_cached_info_url())
-        self.assertEqual(resp.status_code, 200)
-
+        fetch_new_info_save_and_set_cache(self.router.id)
         self.assertEqual(Device.objects.count(), 6)
 
-        self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_and_cache(self.router.id)
         resp = self.client.get(self.fetch_cached_info_url())
         self.assertEqual(resp.status_code, 200)
 
+        self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
+        fetch_new_info_save_and_set_cache(self.router.id)
         self.assertEqual(Device.objects.count(), 7)
+
+        resp = self.client.get(self.fetch_cached_info_url())
+        self.assertEqual(resp.status_code, 200)
 
     def test_fetch_cached_limit_time_info(self):
         self.fetch_2_info()
@@ -364,7 +382,7 @@ class DeviceUpdateViewTest(
 
     def test_get_ok(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
         # This step is need, user should first view the list page before edit
         self.client.get(self.fetch_cached_info_url())
@@ -380,7 +398,7 @@ class DeviceUpdateViewTest(
 
     def test_get_fetch_fail(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
         self.client.get(self.fetch_cached_info_url())
 
         def fail():
@@ -400,9 +418,9 @@ class DeviceUpdateViewTest(
 
     def set_test_device_instance(self, mac=None) -> (Device, dict):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
-        self.client.get(self.fetch_cached_info_url())
-        assert Device.objects.count() == 6
+        fetch_new_info_save_and_set_cache(self.router.id)
+        self.assertEqual(Device.objects.count(), 6)
+
         mac = mac or DEVICE1_MAC
         instance: Device = Device.objects.get(mac=mac)
         data: dict = restructured_info_dicts1["host_info"][mac]
@@ -706,7 +724,7 @@ class EditLimitTimeTest(
     def setUp(self):
         super().setUp()
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_and_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(self.router.id)
 
     def limit_time_edit_url(self, limit_time_name: str | int = "limit_time_1"):
         return reverse("limit_time-edit", args=(self.router.id, limit_time_name))
@@ -745,6 +763,18 @@ class EditLimitTimeTest(
         resp = self.client.get(self.limit_time_edit_url())
         self.assertEqual(resp.status_code, 200)
 
+    def test_get_with_ignored_device_ok(self):
+        # ignored device not shown in edit limit_time form
+        device_ignored = Device.objects.get(mac=BLOCKED_DEVICE1_MAC)
+        device_ignored.ignore = True
+        device_ignored.save()
+        resp = self.client.get(self.limit_time_edit_url())
+        self.assertEqual(resp.status_code, 200)
+        form = self.get_response_context_value_by_name(resp, "form")
+        mac_choices = [k for k, v in form.fields["apply_to"].choices]
+        self.assertNotIn(BLOCKED_DEVICE1_MAC, mac_choices)
+        self.assertIn(BLOCKED_DEVICE2_MAC, mac_choices)
+
     def test_get_login_required(self):
         self.client.logout()
         resp = self.client.get(self.limit_time_edit_url())
@@ -760,7 +790,8 @@ class EditLimitTimeTest(
 
     def test_add_ok(self):
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_add_url(),
@@ -784,9 +815,10 @@ class EditLimitTimeTest(
             # First call in get_available_name, second when done.
             self.assertEqual(mock_fetch_new.call_count, 2)
 
-    def test_add__no_apply_to(self):
+    def test_add_no_apply_to(self):
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_add_url(),
@@ -806,7 +838,8 @@ class EditLimitTimeTest(
         self.mock_add_limit_time.side_effect = lambda x: exec("raise RuntimeError()")
 
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_add_url(),
@@ -834,7 +867,8 @@ class EditLimitTimeTest(
         self.mock_set_host_info.side_effect = lambda x: exec("raise RuntimeError()")
 
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_add_url(),
@@ -860,7 +894,8 @@ class EditLimitTimeTest(
 
     def test_add_form_invalid(self):
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_add_url(),
@@ -878,7 +913,8 @@ class EditLimitTimeTest(
 
     def test_edit_not_changed_ok(self):
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_edit_url(limit_time_name="limit_time_4"),
@@ -897,7 +933,8 @@ class EditLimitTimeTest(
     def test_edit_apply_to_not_changed_ok(self):
         # this case has apply_to but not changed
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_edit_url(),
@@ -916,7 +953,8 @@ class EditLimitTimeTest(
 
     def test_edit_apply_to_changed_ok(self):
         with mock.patch(
-                "my_router.views.fetch_new_info_and_cache") as mock_fetch_new:
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
 
             resp = self.client.post(
                 self.limit_time_edit_url(),
@@ -930,4 +968,244 @@ class EditLimitTimeTest(
             self.assertAddMessageCallCount(0)
 
             # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 2)
+
+
+class EditForbidDomainTest(
+        RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing, CacheMixin,
+        TestCase):
+    default_domain = "test_forbid_domain.com"
+    expected_add_forbid_domain_name = "forbid_domain_1"
+    default_apply_to = [BLOCKED_DEVICE2_MAC, LIMIT_DEVICE1_MAC]
+
+    def setUp(self):
+        super().setUp()
+        self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
+        fetch_new_info_save_and_set_cache(self.router.id)
+        self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
+        fetch_new_info_save_and_set_cache(self.router.id)
+
+    def forbid_domain_edit_url(
+            self, forbid_domain_name: str | int = "forbid_domain_3"):
+        return reverse(
+            "forbid_domain-edit", args=(self.router.id, forbid_domain_name))
+
+    def forbid_domain_add_url(self):
+        return reverse("forbid_domain-edit", args=(self.router.id, -1))
+
+    def add_forbid_domain_post_data(self, disable_apply_to=False, **kwargs):
+        data = dict(domain=self.default_domain)
+
+        if not disable_apply_to:
+            data["apply_to "] = self.default_apply_to
+
+        data.update(**kwargs)
+        return data
+
+    def edit_forbid_domain_post_data(self, **kwargs):
+        # todo: Currently only test change of apply_to
+        data = dict(apply_to=[])
+
+        data.update(**kwargs)
+        return data
+
+    def test_get_ok(self):
+        resp = self.client.get(self.forbid_domain_edit_url())
+        self.assertEqual(resp.status_code, 200)
+
+    def test_get_with_ignored_device_ok(self):
+        # ignored device not shown in edit forbid_domain form
+        device_ignored = Device.objects.get(mac=BLOCKED_DEVICE1_MAC)
+        device_ignored.ignore = True
+        device_ignored.save()
+        resp = self.client.get(self.forbid_domain_edit_url())
+        self.assertEqual(resp.status_code, 200)
+        form = self.get_response_context_value_by_name(resp, "form")
+        mac_choices = [k for k, v in form.fields["apply_to"].choices]
+        self.assertNotIn(BLOCKED_DEVICE1_MAC, mac_choices)
+        self.assertIn(BLOCKED_DEVICE2_MAC, mac_choices)
+
+    def test_get_login_required(self):
+        self.client.logout()
+        resp = self.client.get(self.forbid_domain_edit_url())
+        self.assertEqual(resp.status_code, 302)
+
+    def test_get_404(self):
+        resp = self.client.get(
+            self.forbid_domain_edit_url("forbid_domain_not_exist"))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_get_add_ok(self):
+        resp = self.client.get(self.forbid_domain_edit_url(forbid_domain_name=-1))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_add_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_add_url(),
+                data=self.add_forbid_domain_post_data(disabled_days=["mon"]))
+            self.assertRedirects(
+                resp,
+                expected_url=self.forbid_domain_edit_url(
+                    forbid_domain_name=self.expected_add_forbid_domain_name),
+                status_code=302, fetch_redirect_response=False)
+
+            self.mock_add_forbid_domain.assert_called_once_with(
+                forbid_domain_name=self.expected_add_forbid_domain_name,
+                domain=self.default_domain,
+            )
+            self.assertEqual(self.mock_set_host_info.call_count, 2)
+
+            # First call in get_available_name, second when done.
+            self.assertEqual(mock_fetch_new.call_count, 2)
+
+    def test_add_no_apply_to(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_add_url(),
+                data=self.add_forbid_domain_post_data(disable_apply_to=True))
+            self.assertRedirects(
+                resp,
+                expected_url=self.forbid_domain_edit_url(
+                    forbid_domain_name=self.expected_add_forbid_domain_name),
+                status_code=302, fetch_redirect_response=False)
+            self.mock_add_forbid_domain.assert_called_once()
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+            # First call in get_available_name, second when done.
+            self.assertEqual(mock_fetch_new.call_count, 2)
+
+    def test_add_forbid_domain_errored(self):
+        self.mock_add_forbid_domain.side_effect = (
+            lambda x: exec("raise RuntimeError()"))
+
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_add_url(),
+                data=self.add_forbid_domain_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_forbid_domain.assert_called_once_with(
+                forbid_domain_name=self.expected_add_forbid_domain_name,
+                domain=self.default_domain,
+            )
+
+            # First call in get_available_name
+            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertAddMessageCallCount(1)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_add_set_host_info_errored(self):
+        self.mock_set_host_info.side_effect = lambda x: exec("raise RuntimeError()")
+
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_add_url(),
+                data=self.add_forbid_domain_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_forbid_domain.assert_called_once_with(
+                forbid_domain_name=self.expected_add_forbid_domain_name,
+                domain=self.default_domain,
+            )
+
+            # First call in get_available_name
+            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertAddMessageCallCount(1)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 1)
+
+    def test_add_form_invalid(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_add_url(),
+                # length more than 32
+                data=self.add_forbid_domain_post_data(domain="foobar" * 10))
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_forbid_domain.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 0)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_edit_not_changed_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_edit_url(
+                    forbid_domain_name="forbid_domain_5"),
+                data=self.edit_forbid_domain_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_forbid_domain.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 0)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_edit_apply_to_not_changed_ok(self):
+        # this case has apply_to but not changed
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_edit_url("forbid_domain_3"),
+                data=self.edit_forbid_domain_post_data(
+                    apply_to=[LIMIT_DEVICE1_MAC, ADDED_DEVICE_MAC]))
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_forbid_domain.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 0)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 0)
+
+    def test_edit_apply_to_changed_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+
+            resp = self.client.post(
+                self.forbid_domain_edit_url(),
+                data=self.edit_forbid_domain_post_data())
+            self.assertEqual(resp.status_code, 200)
+
+            self.mock_add_forbid_domain.assert_not_called()
+
+            # get_available_name not called
+            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info called twice
             self.assertEqual(self.mock_set_host_info.call_count, 2)

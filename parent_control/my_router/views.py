@@ -37,7 +37,7 @@ def routers_context_processor(request):
     }
 
 
-def fetch_new_info_and_cache(router_id):
+def fetch_new_info_save_and_set_cache(router_id):
     routers = Router.objects.filter(id=router_id)
     if not routers.count():
         return
@@ -45,11 +45,40 @@ def fetch_new_info_and_cache(router_id):
     router, = routers
     client: RouterClient = router.get_client()
     new_result = client.get_restructured_info_dicts()
+
+    serializer = InfoSerializer(data=deepcopy(new_result))
+    if not serializer.is_valid():
+        return
+
     DEFAULT_CACHE.set(get_all_info_cache_key(router_id), new_result)
 
-    assert "host_info" in new_result
-    assert "limit_time" in new_result
-    assert "forbid_domain" in new_result
+    router = Router.objects.get(id=router_id)
+    for info in serializer.data["host_info"].values():
+        # save/update device form_data into database
+        data = deepcopy(info)
+        instances = Device.objects.filter(mac=data["mac"])
+        if instances.count():
+            instance = instances[0]
+        else:
+            instance = None
+        d_serializer = DeviceModelSerializer(instance=instance, data=data)
+        d_serializer.is_valid(raise_exception=True)
+        if instance is None:
+            with transaction.atomic():
+                d_serializer.save(router=router)
+        else:
+            # When fetching remote data, only name and mac is saved in
+            # database. So it is expensive to save/update each existing
+            # device at each fetch.
+            # We cache the name for comparing before determine whether to do
+            # the update.
+            mac = d_serializer.validated_data["mac"]
+            name = d_serializer.validated_data["name"]
+            cached_name = DEFAULT_CACHE.get(get_device_db_cache_key(mac))
+
+            if name != cached_name:
+                with transaction.atomic():
+                    d_serializer.save(router=router)
 
     limit_time_device_dict = dict()
     forbid_domain_device_dict = dict()
@@ -123,7 +152,7 @@ def get_all_cached_info_with_online_status(router_id):
 
     # Avoiding cache cleared
     if not cached_info:
-        cached_info = fetch_new_info_and_cache(router_id)
+        cached_info = fetch_new_info_save_and_set_cache(router_id)
         assert cached_info
 
     host_info = cached_info.get("host_info", {})
@@ -175,35 +204,6 @@ def fetch_cached_info(request, router_id, info_name):
 
         serializer = InfoSerializer(data=all_cached_info)
         if serializer.is_valid():
-            router = Router.objects.get(id=router_id)
-
-            for info in serializer.data["host_info"].values():
-                # save/update device form_data into database
-                data = deepcopy(info)
-                instances = Device.objects.filter(mac=data["mac"])
-                if instances.count():
-                    instance = instances[0]
-                else:
-                    instance = None
-                d_serializer = DeviceModelSerializer(instance=instance, data=data)
-                d_serializer.is_valid(raise_exception=True)
-                if instance is None:
-                    with transaction.atomic():
-                        d_serializer.save(router=router)
-                else:
-                    # When fetching remote data, only name and mac is saved in
-                    # database. So it is expensive to save/update each existing
-                    # device at each fetch.
-                    # We cache the name for comparing before determine whether to do
-                    # the update.
-                    mac = d_serializer.validated_data["mac"]
-                    name = d_serializer.validated_data["name"]
-                    cached_name = DEFAULT_CACHE.get(get_device_db_cache_key(mac))
-
-                    if name != cached_name:
-                        with transaction.atomic():
-                            d_serializer.save(router=router)
-
             return JsonResponse(
                 data=serializer.get_datatable_data(router_id, info_name),
                 safe=False)
@@ -289,7 +289,7 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
             serializer.is_valid(raise_exception=True)
             self.serialized_cached_device_data = serializer.data
 
-            all_info = fetch_new_info_and_cache(self.object.router.id)
+            all_info = fetch_new_info_save_and_set_cache(self.object.router.id)
             serializer = InfoSerializer(data=all_info)
             serializer.is_valid(raise_exception=True)
             kwargs.update(serializer.get_device_update_form_kwargs(
@@ -388,15 +388,15 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
 
     def refresh_all_info_cache(self):
         # Cached limit_time and forbid_domain can only be updated by
-        # fetch_new_info_and_cache method.
+        # fetch_new_info_save_and_set_cache method.
         # We put it as a new method to facilitate tests.
 
-        fetch_new_info_and_cache(self.kwargs["router_id"])
+        fetch_new_info_save_and_set_cache(self.kwargs["router_id"])
 
 
 def find_available_name(router_id, prefix):
     assert prefix in ["limit_time", "forbid_domain"]
-    fetch_new_info_and_cache(router_id)
+    fetch_new_info_save_and_set_cache(router_id)
 
     if prefix == "limit_time":
         all_data: dict = get_cached_limit_times(router_id)
@@ -642,7 +642,7 @@ def edit_limit_time(request, router_id, limit_time_name):
                         })
 
             if form.has_changed():
-                fetch_new_info_and_cache(router_id)
+                fetch_new_info_save_and_set_cache(router_id)
 
             if add_new:
                 return HttpResponseRedirect(
@@ -728,8 +728,18 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
 
             if add_new:
                 forbid_domain_name = find_available_name(router_id, "forbid_domain")
-                client.add_forbid_domain(
-                    forbid_domain_name, form.cleaned_data["domain"])
+                try:
+                    client.add_forbid_domain(
+                        forbid_domain_name=forbid_domain_name,
+                        domain=form.cleaned_data["domain"])
+                except Exception as e:
+                    messages.add_message(
+                        request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+                    return render(request, "my_router/limit_time-page.html", {
+                        "router_id": router_id,
+                        "form": form,
+                        "form_description": form_description,
+                    })
 
             apply_to_changed = False
             new_apply_to = form.cleaned_data["apply_to"]
@@ -774,9 +784,10 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                         get_router_device_cache_key(router_id, mac))
                     cached_forbid_domain = cached_data.get("forbid_domain", "")
                     if cached_forbid_domain == "":
-                        cached_forbid_domain = []
-                    else:
-                        cached_forbid_domain = cached_forbid_domain.split(",")
+                        # when will this happen?
+                        continue
+
+                    cached_forbid_domain = cached_forbid_domain.split(",")
 
                     cached_forbid_domain = list(
                         set(cached_forbid_domain) - {forbid_domain_name})
@@ -803,11 +814,19 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                     except Exception as e:
                         messages.add_message(
                             request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+                        return render(request, "my_router/forbid_domain-page.html", {
+                            "router_id": router_id,
+                            "form": form,
+                            "form_description": form_description,
+                        })
 
-        fetch_new_info_and_cache(router_id)
-        if add_new:
-            return HttpResponseRedirect(
-                reverse("forbid_domain-edit", args=(router_id, forbid_domain_name)))
+            if form.has_changed():
+                fetch_new_info_save_and_set_cache(router_id)
+
+            if add_new:
+                return HttpResponseRedirect(
+                    reverse(
+                        "forbid_domain-edit", args=(router_id, forbid_domain_name)))
 
     else:
         form = ForbidDomainEditForm(**kwargs)
