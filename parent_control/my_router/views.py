@@ -728,8 +728,18 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
 
             if add_new:
                 forbid_domain_name = find_available_name(router_id, "forbid_domain")
-                client.add_forbid_domain(
-                    forbid_domain_name, form.cleaned_data["domain"])
+                try:
+                    client.add_forbid_domain(
+                        forbid_domain_name=forbid_domain_name,
+                        domain=form.cleaned_data["domain"])
+                except Exception as e:
+                    messages.add_message(
+                        request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+                    return render(request, "my_router/limit_time-page.html", {
+                        "router_id": router_id,
+                        "form": form,
+                        "form_description": form_description,
+                    })
 
             apply_to_changed = False
             new_apply_to = form.cleaned_data["apply_to"]
@@ -774,9 +784,10 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                         get_router_device_cache_key(router_id, mac))
                     cached_forbid_domain = cached_data.get("forbid_domain", "")
                     if cached_forbid_domain == "":
-                        cached_forbid_domain = []
-                    else:
-                        cached_forbid_domain = cached_forbid_domain.split(",")
+                        # when will this happen?
+                        continue
+
+                    cached_forbid_domain = cached_forbid_domain.split(",")
 
                     cached_forbid_domain = list(
                         set(cached_forbid_domain) - {forbid_domain_name})
@@ -803,11 +814,19 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                     except Exception as e:
                         messages.add_message(
                             request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+                        return render(request, "my_router/forbid_domain-page.html", {
+                            "router_id": router_id,
+                            "form": form,
+                            "form_description": form_description,
+                        })
 
-        fetch_new_info_save_and_set_cache(router_id)
-        if add_new:
-            return HttpResponseRedirect(
-                reverse("forbid_domain-edit", args=(router_id, forbid_domain_name)))
+            if form.has_changed():
+                fetch_new_info_save_and_set_cache(router_id)
+
+            if add_new:
+                return HttpResponseRedirect(
+                    reverse(
+                        "forbid_domain-edit", args=(router_id, forbid_domain_name)))
 
     else:
         form = ForbidDomainEditForm(**kwargs)
