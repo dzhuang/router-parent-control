@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 from django import forms
 
 from my_router.constants import (CACHE_VERSION, DEFAULT_CACHE,
@@ -35,20 +33,6 @@ class StyledForm(StyledFormMixin, forms.Form):
 
 class StyledModelForm(StyledFormMixin, forms.ModelForm):
     pass
-
-
-def deep_update(source, overrides):
-    """
-    Update a nested dictionary or similar mapping.
-    Modify ``source`` in place.
-    """
-    for key, value in overrides.items():
-        if isinstance(value, Mapping) and value:
-            returned = deep_update(source.get(key, {}), value)
-            source[key] = returned
-        else:
-            source[key] = overrides[key]
-    return source
 
 
 class CacheDataDoesNotExist(Exception):
