@@ -353,6 +353,7 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         except Exception as e:
             messages.add_message(
                 self.request, messages.ERROR, f"{type(e).__name__}： {str(e)}")
+            return self.form_invalid(form)
         else:
             for _field in form.changed_data:
                 if _field in ["name", "known", "ignore"]:
@@ -392,6 +393,37 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         # We put it as a new method to facilitate tests.
 
         fetch_new_info_save_and_set_cache(self.kwargs["router_id"])
+
+
+def do_delete(router_id, name, delete_type):
+    # delete info on router, and re fetch and cache the info
+    assert delete_type in ["forbid_domain", "limit_time"]
+    router = Router.objects.get(id=router_id)
+    client = router.get_client()
+
+    if delete_type == "forbid_domain":
+        client.delete_forbid_domain(forbid_domain_name=name)
+    else:
+        client.delete_limit_time(limit_time_name=name)
+
+    # update cached device info (especially those not present when fetch)
+    fetch_new_info_save_and_set_cache(router_id)
+
+
+def get_mac_choice_tuple(router: Router) -> list:
+    all_mac_cache_key = get_router_all_devices_mac_cache_key(router.id)
+    all_macs = DEFAULT_CACHE.get(all_mac_cache_key)
+    apply_to_choices = []
+    ignored_device_mac = (
+        Device.objects.filter(
+            router=router, ignore=True).values_list("mac", flat=True))
+    for mac in all_macs:
+        if mac in ignored_device_mac:
+            continue
+        apply_to_choices.append(
+            (mac, DEFAULT_CACHE.get(
+                get_router_device_cache_key(router.id, mac))["hostname"]))
+    return apply_to_choices
 
 
 def find_available_name(router_id, prefix):
@@ -477,22 +509,6 @@ class LimitTimeEditForm(StyledForm):
         self.cleaned_data["start_time"] = start_time.strftime("%H:%M")
         self.cleaned_data["end_time"] = end_time.strftime("%H:%M")
         return self.cleaned_data
-
-
-def get_mac_choice_tuple(router: Router) -> list:
-    all_mac_cache_key = get_router_all_devices_mac_cache_key(router.id)
-    all_macs = DEFAULT_CACHE.get(all_mac_cache_key)
-    apply_to_choices = []
-    ignored_device_mac = (
-        Device.objects.filter(
-            router=router, ignore=True).values_list("mac", flat=True))
-    for mac in all_macs:
-        if mac in ignored_device_mac:
-            continue
-        apply_to_choices.append(
-            (mac, DEFAULT_CACHE.get(
-                get_router_device_cache_key(router.id, mac))["hostname"]))
-    return apply_to_choices
 
 
 @login_required
@@ -656,6 +672,19 @@ def edit_limit_time(request, router_id, limit_time_name):
         "form": form,
         "form_description": form_description,
     })
+
+
+@login_required
+def delete_limit_time(request, router_id, limit_time_name):
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    try:
+        do_delete(router_id, name=limit_time_name, delete_type="limit_time")
+    except Exception as e:
+        return JsonResponse(
+            data={"error": f"{type(e).__name__}： {str(e)}"}, status=400)
+
+    return JsonResponse(data={"success": True})
 
 
 @login_required
@@ -836,3 +865,16 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
         "form": form,
         "form_description": form_description,
     })
+
+
+@login_required
+def delete_forbid_domain(request, router_id, forbid_domain_name):
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    try:
+        do_delete(router_id, name=forbid_domain_name, delete_type="forbid_domain")
+    except Exception as e:
+        return JsonResponse(
+            data={"error": f"{type(e).__name__}： {str(e)}"}, status=400)
+
+    return JsonResponse(data={"success": True})

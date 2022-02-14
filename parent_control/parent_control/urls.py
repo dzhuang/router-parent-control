@@ -30,10 +30,13 @@ urlpatterns = [
          name="limit_time-list"),
     path('router/<router_id>/limit_time/<limit_time_name>/edit/',
          views.edit_limit_time, name="limit_time-edit"),
+    path('router/<router_id>/limit_time/<limit_time_name>/delete/',
+         views.delete_limit_time, name="limit_time-delete"),
 
     path('router/<router_id>/forbid_domain/list/', views.list_forbid_domain,
          name="forbid_domain-list"),
     path('router/<router_id>/forbid_domain/<forbid_domain_name>/edit/',
          views.edit_forbid_domain, name="forbid_domain-edit"),
-
+    path('router/<router_id>/forbid_domain/<forbid_domain_name>/delete/',
+         views.delete_forbid_domain, name="forbid_domain-delete"),
 ]
