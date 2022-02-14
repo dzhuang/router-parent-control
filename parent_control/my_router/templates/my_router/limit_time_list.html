@@ -39,11 +39,11 @@
 {% block page_bottom_javascript_extra %}
     {% get_current_js_lang_name as LANG %}
     <script type="text/javascript">
-        var tbl = $("table.limit_times-all").dataTable({
+        var tbl = $("table.limit_times-all").DataTable({
             "ajax": {
                 url: '{% url "fetch-cached-info" router_id "limit_time" %}',
                 dataSrc: function (data) {
-                    const names = ["index_on_router", "name", "edit_url",
+                    const names = ["index_on_router", "name",
                         "start_time", "end_time", "mon", "tue", "wed", "thu",
                         "fri", "sat", "sun", "apply_to"];
                     let retArray = [];
@@ -52,6 +52,7 @@
                         for (let i=0; i<names.length; i++){
                             subarray.push(item[names[i]]);
                         }
+                        subarray.splice(2, 0, [item["edit_url"], item["delete_url"]])
                         retArray.push(subarray);
                     }
                     return retArray
@@ -77,7 +78,8 @@
                     targets: 2,
                     render: function (data, type, row, meta) {
                         if (type === 'display') {
-                            return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>"
+                            return "<a class='btn btn-default btn-sm' href='" + data[0] + "'> {% trans 'Edit' %} </a>" +
+                                "<button class='btn btn-danger btn-sm remove-item' data-url='" + data[1] + "' onclick='removeItem(event);'> {% trans 'Delete' %} </button>"
                         }
                         return data;
                     }

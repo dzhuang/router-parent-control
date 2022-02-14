@@ -524,7 +524,8 @@ class DeviceUpdateViewTest(
 
             mock_save.assert_not_called()
 
-        self.assertEqual(resp.status_code, 302)
+        # not redirected
+        self.assertEqual(resp.status_code, 200)
 
         self.assertAddMessageCalledWith("Foo Bar")
 

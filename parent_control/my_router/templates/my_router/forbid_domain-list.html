@@ -30,18 +30,19 @@
 {% block page_bottom_javascript_extra %}
     {% get_current_js_lang_name as LANG %}
     <script type="text/javascript">
-        var tbl = $("table.forbid_domains-all").dataTable({
+        var tbl = $("table.forbid_domains-all").DataTable({
             "ajax": {
                 url: '{% url "fetch-cached-info" router_id "forbid_domain" %}',
                 dataSrc: function (data) {
                     const names = [
-                        "index_on_router", "domain", "edit_url", "apply_to"];
+                        "index_on_router", "domain", "apply_to"];
                     let retArray = [];
-                    for (let item of data){
-                        let subarray =[];
-                        for (let i=0; i<names.length; i++){
+                    for (let item of data) {
+                        let subarray = [];
+                        for (let i = 0; i < names.length; i++) {
                             subarray.push(item[names[i]]);
                         }
+                        subarray.splice(2, 0, [item["edit_url"], item["delete_url"]])
                         retArray.push(subarray);
                     }
                     return retArray
@@ -49,7 +50,7 @@
                 columns: [
                     {data: "id"},
                     {data: "domain"},
-                    {data: "edit_url"},
+                    {data: "action"},
                     {data: "apply_to"},
                 ],
             },
@@ -58,7 +59,8 @@
                     targets: 2,
                     render: function (data, type, row, meta) {
                         if (type === 'display') {
-                            return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>"
+                            return "<a class='btn btn-default btn-sm' href='" + data[0] + "'> {% trans 'Edit' %} </a> " +
+                                "<button class='btn btn-danger btn-sm remove-item' data-url='" + data[1] + "' onclick='removeItem(event);'> {% trans 'Delete' %} </button>"
                         }
                         return data;
                     }

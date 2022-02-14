@@ -250,6 +250,9 @@ class InfoSerializer(serializers.Serializer):
                 value["edit_url"] = reverse(
                     "limit_time-edit",
                     args=[router_id, value["identifier"]])
+                value["delete_url"] = reverse(
+                    "limit_time-delete",
+                    args=[router_id, value["identifier"]])
                 value["apply_to"] = [get_device_dict_by_mac(mac)
                                      for mac in value["apply_to"]]
                 ret.append(value)
@@ -258,6 +261,8 @@ class InfoSerializer(serializers.Serializer):
             assert info_name == "forbid_domain"
             for value in forbid_domain_data.values():
                 value["edit_url"] = reverse("forbid_domain-edit",
+                                            args=[router_id, value["identifier"]])
+                value["delete_url"] = reverse("forbid_domain-delete",
                                             args=[router_id, value["identifier"]])
                 value["apply_to"] = [get_device_dict_by_mac(mac)
                                      for mac in value["apply_to"]]
