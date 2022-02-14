@@ -294,10 +294,11 @@ class FetchCachedInfoTest(
         self.assertEqual(resp.status_code, 200)
         result = resp.json()
         for device_result in result:
-            (_id, hostname, edit_url, mac, asc_time, online, ip, is_blocked,
-             down_limit, up_limit, limit_time, forbid_domain, ignored
-             ) = device_result
-
+            hostname = device_result["name"]
+            online = device_result["online"]
+            is_blocked = device_result["is_blocked"]
+            forbid_domain = device_result["forbid_domain"]
+            limit_time = device_result["limit_time"]
             if hostname in ["BLOCKED_DEVICE1", "BLOCKED_DEVICE2", "LIMITED_HOST2"]:
                 self.assertFalse(online)
             else:
@@ -338,8 +339,9 @@ class FetchCachedInfoTest(
         resp = self.client.get(self.fetch_cached_info_url(info_name="limit_time"))
         self.assertEqual(resp.status_code, 200)
         for limit_time_result in resp.json():
-            (index, name, edit_url, start_time, end_time, mon,
-             tue, wed, thu, fri, sat, sun, apply_to) = limit_time_result
+            index = limit_time_result["index_on_router"]
+            apply_to = limit_time_result["apply_to"]
+
             if index in [22, 25]:
                 self.assertEqual(len(apply_to), 1)
             else:
@@ -350,8 +352,9 @@ class FetchCachedInfoTest(
         resp = self.client.get(self.fetch_cached_info_url(info_name="forbid_domain"))
         self.assertEqual(resp.status_code, 200)
         for forbid_domain_result in resp.json():
+            index = forbid_domain_result["index_on_router"]
+            apply_to = forbid_domain_result["apply_to"]
 
-            index, domain, edit_url, apply_to = forbid_domain_result
             if index in [23, 30]:
                 self.assertEqual(len(apply_to), 1)
             elif index == 29:

@@ -43,12 +43,23 @@
             "ajax": {
                 url: '{% url "fetch-cached-info" router_id "limit_time" %}',
                 dataSrc: function (data) {
-                    return data
+                    const names = ["index_on_router", "name", "edit_url",
+                        "start_time", "end_time", "mon", "tue", "wed", "thu",
+                        "fri", "sat", "sun", "apply_to"];
+                    let retArray = [];
+                    for (let item of data){
+                        let subarray =[];
+                        for (let i=0; i<names.length; i++){
+                            subarray.push(item[names[i]]);
+                        }
+                        retArray.push(subarray);
+                    }
+                    return retArray
                 },
                 columns: [
                     {data: "id"},
                     {data: "name"},
-                    {data: "edit-url"},
+                    {data: "edit_url"},
                     {data: "start_time"},
                     {data: "end_time"},
                     {data: "mon"},
@@ -92,7 +103,6 @@
                             for (let i = 0, len = data.length; i < len; i++) {
                                 html += "<a class='btn btn-default btn-sm' href='" + data[i]["url"] + "'>" + data[i]["name"] + "</a>";
                             }
-                            console.log(html);
                             return html
                         }
                         var names = ""
