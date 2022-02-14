@@ -67,7 +67,20 @@
             "ajax": {
                 url: '{% url "fetch-cached-info" router_id "device" %}',
                 dataSrc: function (data) {
-                    return data
+                    const names = [
+                        "index", "name", "edit_url", "mac", "acs_time", "online",
+                        "ip", "is_blocked", "down_limit", "up_limit", "limit_time",
+                        "forbid_domain", "ignored"
+                    ];
+                    let retArray = [];
+                    for (let item of data){
+                        let subarray =[];
+                        for (let i=0; i<names.length; i++){
+                            subarray.push(item[names[i]]);
+                        }
+                        retArray.push(subarray);
+                    }
+                    return retArray
                 },
                 columns: [
                     {data: "id"},

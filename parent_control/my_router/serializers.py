@@ -7,7 +7,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from my_router.constants import DEFAULT_CACHE
+from my_router.constants import DEFAULT_CACHE, days_const
 from my_router.models import Device, Router
 from my_router.utils import CacheDataDoesNotExist, get_router_device_cache_key
 
@@ -232,47 +232,27 @@ class InfoSerializer(serializers.Serializer):
                 try:
                     device = Device.objects.get(mac=mac)
                     value["ignored"] = device.ignore
-                    value["edit-url"] = reverse("device-edit",
+                    value["edit_url"] = reverse("device-edit",
                                                 args=[router_id, device.id])
                 except Device.DoesNotExist:
                     value["ignored"] = False
-                    value["edit-url"] = None
+                    value["edit_url"] = None
                 value["online"] = value.get("online", True)
-                # if value["is_blocked"]:
-                #     value["online"] = False
 
-                ret.append(
-                    [value["index"], value["name"], value["edit-url"],
-                     value["mac"],
-                     value.get("acs_time", ""), value["online"], value["ip"],
-                     value["is_blocked"],
-                     value["down_limit"],
-                     value["up_limit"],
-                     value["limit_time"],
-                     value["forbid_domain"],
-                     value["ignored"]])
+                ret.append(value)
 
-            ret = sorted(ret, key=lambda k: k[0])
+            ret = sorted(ret, key=lambda k: k["index"])
 
         elif info_name == "limit_time":
             for value in limit_time_data.values():
-                for day in ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]:
+                for day in days_const.keys():
                     value[day] = True if int(value[day]) else False
-                value["edit_url"] = reverse("limit_time-edit",
-                                            args=[router_id, value["identifier"]])
+                value["edit_url"] = reverse(
+                    "limit_time-edit",
+                    args=[router_id, value["identifier"]])
                 value["apply_to"] = [get_device_dict_by_mac(mac)
                                      for mac in value["apply_to"]]
-                ret.append([
-                    value["index_on_router"],
-                    value["name"],
-                    value["edit_url"],
-                    value["start_time"],
-                    value["end_time"],
-                    value["mon"], value["tue"], value["wed"], value["thu"],
-                    value["fri"],
-                    value["sat"], value["sun"],
-                    value["apply_to"]
-                ])
+                ret.append(value)
 
         else:
             assert info_name == "forbid_domain"
@@ -282,12 +262,7 @@ class InfoSerializer(serializers.Serializer):
                 value["apply_to"] = [get_device_dict_by_mac(mac)
                                      for mac in value["apply_to"]]
 
-                ret.append([
-                    value["index_on_router"],
-                    value["domain"],
-                    value["edit_url"],
-                    value["apply_to"]
-                ])
+                ret.append(value)
 
         return ret
 
