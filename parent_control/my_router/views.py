@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime, time
 
 from crispy_forms.layout import Submit
 from django import forms
@@ -458,6 +459,13 @@ def list_limit_time(request, router_id):
     })
 
 
+def turn_str_time_to_time_obj(str_time):
+    if not str_time.strip():
+        return None
+    hour, minute = str_time.split(":")
+    return time(int(hour), int(minute))
+
+
 class LimitTimeEditForm(StyledForm):
 
     def __init__(self, add_new, name, start_time, end_time,
@@ -465,16 +473,18 @@ class LimitTimeEditForm(StyledForm):
                  apply_to_choices, apply_to_initial, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        disabled = not add_new
+        disabled = False
         self.fields["name"] = forms.CharField(
             label=_("Name"),
             max_length=32, required=True,
             disabled=disabled,
             initial=name)
+
         self.fields["start_time"] = forms.TimeField(
             label=_("Start time"),
             disabled=disabled, initial=start_time,
             widget=TimePickerInput)
+
         self.fields["end_time"] = forms.TimeField(
             label=_("End time"),
             disabled=disabled, initial=end_time,
@@ -523,6 +533,8 @@ def edit_limit_time(request, router_id, limit_time_name):
 
     limit_time_infos = get_cached_limit_times(router.id)
 
+    limit_time_name_copy = limit_time_name
+
     limit_time_info = {}
     apply_to_initial = []
     if not add_new:
@@ -537,11 +549,19 @@ def edit_limit_time(request, router_id, limit_time_name):
         if limit_time_info.get(day) == "1":
             days.append(day)
 
+    start_time = limit_time_info.get("start_time", "")
+    if add_new:
+        start_time = datetime.now().strftime("%H:%M")
+
+    start_time = turn_str_time_to_time_obj(start_time)
+
+    end_time = turn_str_time_to_time_obj(limit_time_info.get("end_time", ""))
+
     kwargs = dict(
         add_new=add_new,
         name=limit_time_info.get("name", ""),
-        start_time=limit_time_info.get("start_time", ""),
-        end_time=limit_time_info.get("end_time", ""),
+        start_time=start_time,
+        end_time=end_time,
         days=days,
         apply_to_choices=get_mac_choice_tuple(router),
         apply_to_initial=apply_to_initial)
@@ -554,21 +574,25 @@ def edit_limit_time(request, router_id, limit_time_name):
         if form.is_valid():
             client = router.get_client()
 
-            if add_new:
-                limit_time_name = find_available_name(router_id, "limit_time")
+            is_editing_exist_limit_time = False
+            apply_to_changed = False
+            new_apply_to = form.cleaned_data["apply_to"]
 
-                add_limit_time_kwargs = dict(
-                    limit_time_name=limit_time_name,
-                    desc_name=form.cleaned_data["name"],
-                    start_time=form.cleaned_data["start_time"],
-                    end_time=form.cleaned_data["end_time"]
-                )
+            if form.has_changed():
+                for field in ["name", "start_time", "end_time", "days"]:
+                    if field in form.changed_data:
+                        if not add_new:
+                            is_editing_exist_limit_time = True
+                        apply_to_changed = True
+                        break
+                else:
+                    assert "apply_to" in form.changed_data
+                    apply_to_changed = True
 
-                for day in days_const:
-                    add_limit_time_kwargs[day] = day in form.cleaned_data["days"]
-
+            if add_new or is_editing_exist_limit_time:
                 try:
-                    client.add_limit_time(**add_limit_time_kwargs)
+                    limit_time_name = add_new_limit_time_from_form_data(
+                        client, router_id, form)
                 except Exception as e:
                     messages.add_message(
                         request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
@@ -578,89 +602,28 @@ def edit_limit_time(request, router_id, limit_time_name):
                         "form_description": form_description,
                     })
 
-            apply_to_changed = False
-            new_apply_to = form.cleaned_data["apply_to"]
-            if form.has_changed() and "apply_to" in form.changed_data:
-                # In edit mode, with only apply_to editable, form_change
-                # means apply_to changed
-                apply_to_changed = True
-
             if apply_to_changed:
-                set_info_tuple = []
-                added_apply_devices = set(new_apply_to) - set(apply_to_initial)
-                removed_apply_devices = set(apply_to_initial) - set(new_apply_to)
-
-                for mac in added_apply_devices:
-                    cached_data = DEFAULT_CACHE.get(
-                        get_router_device_cache_key(router_id, mac))
-                    cached_limit_time = cached_data.get("limit_time", "")
-                    if cached_limit_time == "":
-                        cached_limit_time = []
-                    else:
-                        cached_limit_time = cached_limit_time.split(",")
-
-                    cached_limit_time = list(
-                        set(cached_limit_time + [limit_time_name]))
-                    cached_data["limit_time"] = ",".join(cached_limit_time)
-
-                    set_info_tuple.append(
-                        (dict(
-                            mac=mac,
-                            name=cached_data["hostname"],
-                            is_blocked=cached_data["blocked"],
-                            down_limit=cached_data["down_limit"],
-                            up_limit=cached_data["up_limit"],
-                            forbid_domain=cached_data.get("forbid_domain", ""),
-                            limit_time=cached_data["limit_time"]),
-                         mac,
-                         cached_data)
-                    )
-
-                for mac in removed_apply_devices:
-                    cached_data = DEFAULT_CACHE.get(
-                        get_router_device_cache_key(router_id, mac), {})
-                    cached_limit_time = cached_data.get("limit_time", "")
-                    if cached_limit_time == "":
-                        # when will this happen?
-                        continue
-
-                    cached_limit_time = cached_limit_time.split(",")
-
-                    cached_limit_time = list(
-                        set(cached_limit_time) - {limit_time_name})
-                    cached_data["limit_time"] = ",".join(cached_limit_time)
-
-                    set_info_tuple.append(
-                        (dict(
-                            mac=mac,
-                            name=cached_data["hostname"],
-                            is_blocked=cached_data["blocked"],
-                            down_limit=cached_data["down_limit"],
-                            up_limit=cached_data["up_limit"],
-                            forbid_domain=cached_data.get("forbid_domain", ""),
-                            limit_time=cached_data["limit_time"]),
-                         mac,
-                         cached_data)
-                    )
-
-                for kwargs, mac, cached_data in set_info_tuple:
-                    try:
-                        client.set_host_info(**kwargs)
-                        DEFAULT_CACHE.set(
-                            get_router_device_cache_key(router_id, mac), cached_data)
-                    except Exception as e:
-                        messages.add_message(
-                            request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
-                        return render(request, "my_router/limit_time-page.html", {
-                            "router_id": router_id,
-                            "form": form,
-                            "form_description": form_description,
-                        })
+                try:
+                    apply_limit_time(client, router_id, limit_time_name,
+                                     apply_to_initial, new_apply_to)
+                except Exception as e:
+                    messages.add_message(
+                        request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+                    return render(request, "my_router/limit_time-page.html", {
+                        "router_id": router_id,
+                        "form": form,
+                        "form_description": form_description,
+                    })
 
             if form.has_changed():
-                fetch_new_info_save_and_set_cache(router_id)
+                if is_editing_exist_limit_time:
+                    do_delete(
+                        router_id, name=limit_time_name_copy,
+                        delete_type="limit_time")
+                else:
+                    fetch_new_info_save_and_set_cache(router_id)
 
-            if add_new:
+            if add_new or is_editing_exist_limit_time:
                 return HttpResponseRedirect(
                     reverse("limit_time-edit", args=(router_id, limit_time_name)))
 
@@ -672,6 +635,82 @@ def edit_limit_time(request, router_id, limit_time_name):
         "form": form,
         "form_description": form_description,
     })
+
+
+def add_new_limit_time_from_form_data(client, router_id, form):
+    limit_time_name = find_available_name(router_id, "limit_time")
+    add_limit_time_kwargs = dict(
+        limit_time_name=limit_time_name,
+        desc_name=form.cleaned_data["name"],
+        start_time=form.cleaned_data["start_time"],
+        end_time=form.cleaned_data["end_time"]
+    )
+    for day in days_const:
+        add_limit_time_kwargs[day] = day in form.cleaned_data["days"]
+    client.add_limit_time(**add_limit_time_kwargs)
+    return limit_time_name
+
+
+def apply_limit_time(client, router_id, limit_time_name, initial_device_names,
+                     new_device_names):
+    set_info_tuple = []
+    added_apply_devices = set(new_device_names) - set(initial_device_names)
+    removed_apply_devices = set(initial_device_names) - set(new_device_names)
+    for mac in added_apply_devices:
+        cached_data = DEFAULT_CACHE.get(
+            get_router_device_cache_key(router_id, mac))
+        cached_limit_time = cached_data.get("limit_time", "")
+        if cached_limit_time == "":
+            cached_limit_time = []
+        else:
+            cached_limit_time = cached_limit_time.split(",")
+
+        cached_limit_time = list(
+            set(cached_limit_time + [limit_time_name]))
+        cached_data["limit_time"] = ",".join(cached_limit_time)
+
+        set_info_tuple.append(
+            (dict(
+                mac=mac,
+                name=cached_data["hostname"],
+                is_blocked=cached_data["blocked"],
+                down_limit=cached_data["down_limit"],
+                up_limit=cached_data["up_limit"],
+                forbid_domain=cached_data.get("forbid_domain", ""),
+                limit_time=cached_data["limit_time"]),
+             mac,
+             cached_data)
+        )
+    for mac in removed_apply_devices:
+        cached_data = DEFAULT_CACHE.get(
+            get_router_device_cache_key(router_id, mac), {})
+        cached_limit_time = cached_data.get("limit_time", "")
+        if cached_limit_time == "":
+            # when will this happen?
+            continue
+
+        cached_limit_time = cached_limit_time.split(",")
+
+        cached_limit_time = list(
+            set(cached_limit_time) - {limit_time_name})
+        cached_data["limit_time"] = ",".join(cached_limit_time)
+
+        set_info_tuple.append(
+            (dict(
+                mac=mac,
+                name=cached_data["hostname"],
+                is_blocked=cached_data["blocked"],
+                down_limit=cached_data["down_limit"],
+                up_limit=cached_data["up_limit"],
+                forbid_domain=cached_data.get("forbid_domain", ""),
+                limit_time=cached_data["limit_time"]),
+             mac,
+             cached_data)
+        )
+    for kwargs, mac, cached_data in set_info_tuple:
+        client.set_host_info(**kwargs)
+        DEFAULT_CACHE.set(
+            get_router_device_cache_key(router_id, mac), cached_data)
 
 
 @login_required
