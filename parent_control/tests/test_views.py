@@ -756,10 +756,29 @@ class EditLimitTimeTest(
         data.update(**kwargs)
         return data
 
-    def edit_limit_time_post_data(self, **kwargs):
-        # todo: Currently only test change of apply_to
-        data = dict(apply_to=[])
+    @staticmethod
+    def get_limit_time_data(limit_time_name, info=restructured_info_dicts1):
+        limit_time_data = info["limit_time"][limit_time_name]
+        ret = {}
+        days = []
+        for day in ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']:
+            if limit_time_data[day] == '1':
+                days.append(day)
 
+        ret["days"] = days
+        for field in ['start_time', 'end_time', 'name']:
+            ret[field] = limit_time_data[field]
+
+        apply_to = []
+        for mac, device in info["host_info"].items():
+            if limit_time_data in device["limit_time"].split(","):
+                apply_to.append(mac)
+
+        ret['apply_to'] = apply_to
+        return ret
+
+    def edit_limit_time_post_data(self, limit_time_name="limit_time_1", **kwargs):
+        data = self.get_limit_time_data(limit_time_name=limit_time_name)
         data.update(**kwargs)
         return data
 
@@ -922,7 +941,7 @@ class EditLimitTimeTest(
 
             resp = self.client.post(
                 self.limit_time_edit_url(limit_time_name="limit_time_4"),
-                data=self.edit_limit_time_post_data())
+                data=self.edit_limit_time_post_data(limit_time_name="limit_time_4"))
             self.assertEqual(resp.status_code, 200)
 
             self.mock_add_limit_time.assert_not_called()
