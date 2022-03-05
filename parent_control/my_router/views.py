@@ -590,6 +590,7 @@ def edit_limit_time(request, router_id, limit_time_name):
                     apply_to_changed = True
 
             if add_new or is_editing_exist_limit_time:
+                apply_to_initial = []
                 try:
                     limit_time_name = add_new_limit_time_from_form_data(
                         client, router_id, form)
