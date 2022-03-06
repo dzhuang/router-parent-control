@@ -57,7 +57,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
 
     def test_ok(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
         self.assertDictEqual(
             DEFAULT_CACHE.get(
                 get_router_device_cache_key(self.router.id, DEVICE0_MAC)),
@@ -67,7 +67,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
 
     def test_device_cache_deleted(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
@@ -93,7 +93,7 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
             get_router_device_cache_key(self.router.id, LIMIT_DEVICE2_MAC))
 
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
         self.assertDictEqual(
             DEFAULT_CACHE.get(
@@ -114,15 +114,16 @@ class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):
         )
 
     def test_no_router(self):
+        router_id = self.router.id
         self.router.delete()
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router_id=router_id)
 
     def test_fetch_new_info_save_and_set_cache_ret_invalid(self):
         # An invalid result
         with mock.patch("my_router.views.DEFAULT_CACHE.set") as mock_cache_set:
             self.set_get_restructured_info_dicts_ret({})
-            result = fetch_new_info_save_and_set_cache(self.router.id)
+            result = fetch_new_info_save_and_set_cache(router=self.router)
             self.assertIsNone(result)
 
             # assert no cache set call
@@ -137,7 +138,7 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
         # No fetch_new_info_save_and_set_cache called,
         # so as to test cache_info is None
-        info = get_all_cached_info_with_online_status(self.router.id)
+        info = get_all_cached_info_with_online_status(self.router)
         host_info_44 = info["host_info"][LIMIT_DEVICE2_MAC]
         with self.assertRaises(KeyError):
             host_info_44["online"]  # noqa
@@ -146,8 +147,8 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
         # new info fetched
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_save_and_set_cache(self.router.id)
-        info = get_all_cached_info_with_online_status(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
+        info = get_all_cached_info_with_online_status(self.router)
 
         host_info_44 = info["host_info"][LIMIT_DEVICE2_MAC]
         self.assertFalse(host_info_44["online"])
@@ -158,17 +159,17 @@ class GetAllCachedInfoWithOnlineStatusTest(
 
     def test_device_cache_deleted(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
         # new info fetched
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
         # Remove the cache of a device not in dicts1
         DEFAULT_CACHE.delete(
             get_router_device_cache_key(self.router.id, LIMIT_DEVICE2_MAC))
 
-        info = get_all_cached_info_with_online_status(self.router.id)
+        info = get_all_cached_info_with_online_status(self.router)
         self.assertNotIn(LIMIT_DEVICE2_MAC, info["host_info"])
 
 
@@ -218,25 +219,25 @@ class FetchCachedInfoTest(
     def test_info_cached(self):
         # no save for device not changed when fetch_cached_info
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
         self.client.get(self.fetch_cached_info_url())
 
         with mock.patch("my_router.models.Device.save") as mock_save:
-            fetch_new_info_save_and_set_cache(self.router.id)
+            fetch_new_info_save_and_set_cache(router=self.router)
             self.client.get(self.fetch_cached_info_url())
             mock_save.assert_not_called()
 
             self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-            fetch_new_info_save_and_set_cache(self.router.id)
+            fetch_new_info_save_and_set_cache(router=self.router)
             self.client.get(self.fetch_cached_info_url())
             self.assertEqual(mock_save.call_count, 2)
 
     def fetch_2_info(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
     def test_fetch_cached_device_info(self):
         self.fetch_2_info()
@@ -273,14 +274,14 @@ class FetchCachedInfoTest(
 
     def test_fetch_cached_device_info_twice(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
         self.assertEqual(Device.objects.count(), 6)
 
         resp = self.client.get(self.fetch_cached_info_url())
         self.assertEqual(resp.status_code, 200)
 
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
         self.assertEqual(Device.objects.count(), 7)
 
         resp = self.client.get(self.fetch_cached_info_url())
@@ -337,7 +338,7 @@ class DeviceUpdateViewTest(
 
     def test_get_ok(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
         # This step is need, user should first view the list page before edit
         self.client.get(self.fetch_cached_info_url())
@@ -353,7 +354,7 @@ class DeviceUpdateViewTest(
 
     def test_get_fetch_fail(self):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
         self.client.get(self.fetch_cached_info_url())
 
         def fail():
@@ -373,7 +374,7 @@ class DeviceUpdateViewTest(
 
     def set_test_device_instance(self, mac=None) -> (Device, dict):
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
         self.assertEqual(Device.objects.count(), 6)
 
         mac = mac or DEVICE1_MAC
@@ -680,7 +681,7 @@ class EditLimitTimeTest(
     def setUp(self):
         super().setUp()
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
     def limit_time_edit_url(self, limit_time_name: str | int = "limit_time_1"):
         return reverse("limit_time-edit", args=(self.router.id, limit_time_name))
@@ -956,9 +957,9 @@ class EditForbidDomainTest(
     def setUp(self):
         super().setUp()
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
         self.set_get_restructured_info_dicts_ret(restructured_info_dicts2)
-        fetch_new_info_save_and_set_cache(self.router.id)
+        fetch_new_info_save_and_set_cache(router=self.router)
 
     def forbid_domain_edit_url(
             self, forbid_domain_name: str | int = "forbid_domain_3"):

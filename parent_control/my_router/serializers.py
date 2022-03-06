@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from my_router.constants import DEFAULT_CACHE, days_const
-from my_router.models import Device, Router
+from my_router.models import Device
 from my_router.utils import CacheDataDoesNotExist, get_router_device_cache_key
 
 
@@ -188,14 +188,14 @@ class InfoSerializer(serializers.Serializer):
     limit_time = serializers.DictField(
         required=True, allow_empty=False, allow_null=False)
 
-    def get_datatable_data(self, router_id, info_name):
+    def get_datatable_data(self, router, info_name):
+        router_id = router.id
         data = deepcopy(self.data)
         host_info = data["host_info"]
         forbid_domain_data = data.get("forbid_domain", {})
         limit_time_data = data.get("limit_time", {})
 
         def get_device_dict_by_mac(_mac) -> dict:
-            router = Router.objects.get(id=router_id)
             try:
                 _device = Device.objects.get(router=router, mac=_mac)
             except Device.DoesNotExist:
