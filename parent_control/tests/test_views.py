@@ -11,8 +11,8 @@ from tests.data_for_tests import (ADDED_DEVICE_MAC, BLOCKED_DEVICE1_MAC,
                                   DEVICE1_MAC, LIMIT_DEVICE1_MAC,
                                   LIMIT_DEVICE2_MAC, restructured_info_dicts1,
                                   restructured_info_dicts2)
-from tests.factories import RouterFactory
-from tests.mixins import CacheMixin, MockAddMessageMixing, RequestTestMixin
+from tests.mixins import (CacheMixin, MockAddMessageMixing,
+                          MockRouterClientMixin, RequestTestMixin)
 
 from my_router.constants import days_const
 from my_router.models import Device
@@ -22,54 +22,6 @@ from my_router.utils import (DEFAULT_CACHE,
                              get_router_device_cache_key)
 from my_router.views import (fetch_new_info_save_and_set_cache,
                              get_all_cached_info_with_online_status)
-
-
-class MockRouterClientMixin:
-    def setUp(self):
-        super().setUp()
-
-        with mock.patch(
-                "my_router.receivers.fetch_new_info_save_and_set_cache"
-        ) as mock_fetch_and_cache:
-            mock_fetch_and_cache.return_value = None
-            self.router = RouterFactory()
-
-        get_restructured_info_dicts_patch = mock.patch(
-            "my_router.models.RouterClient.get_restructured_info_dicts")
-        self.mock_get_restructured_info_dicts = (
-            get_restructured_info_dicts_patch.start())
-        self.addCleanup(get_restructured_info_dicts_patch.stop)
-
-        set_host_info_patch = mock.patch(
-            "my_router.models.RouterClient.set_host_info")
-        self.mock_set_host_info = set_host_info_patch.start()
-        self.addCleanup(set_host_info_patch.stop)
-
-        add_limit_time_patch = mock.patch(
-            "my_router.models.RouterClient.add_limit_time")
-        self.mock_add_limit_time = add_limit_time_patch.start()
-        self.addCleanup(add_limit_time_patch.stop)
-
-        add_forbid_domain_patch = mock.patch(
-            "my_router.models.RouterClient.add_forbid_domain")
-        self.mock_add_forbid_domain = add_forbid_domain_patch.start()
-        self.addCleanup(add_forbid_domain_patch.stop)
-
-    def set_get_restructured_info_dicts_ret(self, result):
-        # mock client.get_restructured_info_dicts return_value
-        self.mock_get_restructured_info_dicts.return_value = result
-
-    def set_get_restructured_info_dicts_side_effect(self, func=lambda x: None):
-        # mock client.get_restructured_info_dicts side_effect
-        self.mock_get_restructured_info_dicts.side_effect = func  # noqa
-
-    def set_set_host_info_side_effect(self, func=lambda x: None):
-        # mock client.set_host_info
-        self.mock_set_host_info.side_effect = func  # noqa
-
-    def fetch_cached_info_url(self, info_name="device", router_id=None):
-        router_id = router_id or self.router.id
-        return reverse("fetch-cached-info", args=(router_id, info_name,))
 
 
 class FetchNewInfoAndCacheTest(MockRouterClientMixin, CacheMixin, TestCase):

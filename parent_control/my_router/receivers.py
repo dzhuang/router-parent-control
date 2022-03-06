@@ -5,7 +5,6 @@ from rest_framework.authtoken.models import Token
 
 from my_router.constants import router_status
 from my_router.models import Device, Router
-from my_router.utils import DEFAULT_CACHE, get_router_device_cache_key
 from my_router.views import fetch_new_info_save_and_set_cache
 
 
@@ -28,11 +27,10 @@ def create_or_update_router_fetch_task(sender, instance: Router, created, **kwar
 
 @receiver(post_save, sender=Device)
 def cache_device_info_after_save(sender, instance: Device, **kwargs):
-    instance.update_cache()
+    instance.update_name_cache()
 
 
 @receiver(post_delete, sender=Device)
 def remove_device_cache_after_delete(sender, instance: Device, **kwargs):
-    DEFAULT_CACHE.delete(
-        get_router_device_cache_key(instance.router_id, instance.mac))
+    instance.remove_cache()
     fetch_new_info_save_and_set_cache(instance.id)

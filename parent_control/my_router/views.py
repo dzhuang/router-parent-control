@@ -99,7 +99,6 @@ def fetch_new_info_save_and_set_cache(router_id):
 
     for mac in all_cached_macs:
         # update from ALL device the dict of limit_time and forbid_domain
-        # todo: if device removed, delete the cache
         device_info = DEFAULT_CACHE.get(
             get_router_device_cache_key(router_id, mac), None)
 
@@ -176,7 +175,6 @@ def get_all_cached_info_with_online_status(router_id):
             this_device_info["online"] = False
 
             # limit_time items might have changed
-            # todo: this should be done when deleting limit_time and forbid_domain
             limit_time_items = this_device_info.get("limit_time", "").split(",")
             this_device_info["limit_time"] = ",".join(
                 [lt for lt in limit_time_items if lt in limit_time_keys])
@@ -570,7 +568,6 @@ def edit_limit_time(request, router_id, limit_time_name):
         kwargs.update(data=request.POST)
         form = LimitTimeEditForm(**kwargs)
 
-        # todo: the item itself has changed
         if form.is_valid():
             client = router.get_client()
 
