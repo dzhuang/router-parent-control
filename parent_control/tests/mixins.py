@@ -202,6 +202,16 @@ class MockRouterClientMixin:
         self.mock_add_forbid_domain = add_forbid_domain_patch.start()
         self.addCleanup(add_forbid_domain_patch.stop)
 
+        delete_limit_time_patch = mock.patch(
+            "my_router.models.RouterClient.delete_limit_time")
+        self.mock_delete_limit_time = delete_limit_time_patch.start()
+        self.addCleanup(delete_limit_time_patch.stop)
+
+        delete_forbid_domain_patch = mock.patch(
+            "my_router.models.RouterClient.delete_forbid_domain")
+        self.mock_delete_forbid_domain = delete_forbid_domain_patch.start()
+        self.addCleanup(delete_forbid_domain_patch.stop)
+
     def set_get_restructured_info_dicts_ret(self, result):
         # mock client.get_restructured_info_dicts return_value
         self.mock_get_restructured_info_dicts.return_value = result

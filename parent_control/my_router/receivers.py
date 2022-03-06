@@ -18,7 +18,7 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
 def create_or_update_router_fetch_task(sender, instance: Router, created, **kwargs):
     if created:
         instance.setup_task()
-        fetch_new_info_save_and_set_cache(instance.id)
+        fetch_new_info_save_and_set_cache(router=instance)
     else:
         if instance.task is not None:
             instance.task.enabled = instance.status == router_status.active
@@ -33,4 +33,4 @@ def cache_device_info_after_save(sender, instance: Device, **kwargs):
 @receiver(post_delete, sender=Device)
 def remove_device_cache_after_delete(sender, instance: Device, **kwargs):
     instance.remove_cache()
-    fetch_new_info_save_and_set_cache(instance.id)
+    fetch_new_info_save_and_set_cache(router=instance.router)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from copy import deepcopy
 from datetime import datetime, time
 
@@ -38,12 +40,25 @@ def routers_context_processor(request):
     }
 
 
-def fetch_new_info_save_and_set_cache(router_id):
-    routers = Router.objects.filter(id=router_id)
-    if not routers.count():
-        return
+def fetch_new_info_save_and_set_cache(router_id: int | None = None,
+                                      router: Router | None = None):
+    """
+    Either router_id or router should be specified, the former is used in task
+    calling
+    """
+    if router is None:
+        assert router_id is not None, \
+            "Either router_id or router should be specified"
+        routers = Router.objects.filter(id=router_id)
+        if not routers.count():
+            return
 
-    router, = routers
+        router, = routers
+    else:
+        router_id = router.id
+
+    assert router is not None and router_id is not None
+
     client: RouterClient = router.get_client()
     new_result = client.get_restructured_info_dicts()
 
@@ -53,7 +68,6 @@ def fetch_new_info_save_and_set_cache(router_id):
 
     DEFAULT_CACHE.set(get_all_info_cache_key(router_id), new_result)
 
-    router = Router.objects.get(id=router_id)
     for info in serializer.data["host_info"].values():
         # save/update device form_data into database
         data = deepcopy(info)
@@ -147,12 +161,12 @@ def fetch_new_info_save_and_set_cache(router_id):
     return new_result
 
 
-def get_all_cached_info_with_online_status(router_id):
-    cached_info = DEFAULT_CACHE.get(get_all_info_cache_key(router_id))
+def get_all_cached_info_with_online_status(router):
+    cached_info = DEFAULT_CACHE.get(get_all_info_cache_key(router.id))
 
     # Avoiding cache cleared
     if not cached_info:
-        cached_info = fetch_new_info_save_and_set_cache(router_id)
+        cached_info = fetch_new_info_save_and_set_cache(router=router)
         assert cached_info
 
     host_info = cached_info.get("host_info", {})
@@ -161,12 +175,12 @@ def get_all_cached_info_with_online_status(router_id):
     forbid_domain_keys = cached_info.get("forbid_domain", {}).keys()
 
     all_macs_cached = DEFAULT_CACHE.get(
-        get_router_all_devices_mac_cache_key(router_id), [])
+        get_router_all_devices_mac_cache_key(router.id), [])
     for mac in all_macs_cached:
         if mac not in host_info:
             # devices not present in current cached all_info
             this_device_info = DEFAULT_CACHE.get(
-                get_router_device_cache_key(router_id, mac), {})
+                get_router_device_cache_key(router.id, mac), {})
 
             if not this_device_info:
                 # Avoiding device cache deleted
@@ -195,8 +209,9 @@ def get_all_cached_info_with_online_status(router_id):
 
 @login_required
 def fetch_cached_info(request, router_id, info_name):
+    router = get_object_or_404(Router, id=router_id)
     if request.method == "GET":
-        all_cached_info = get_all_cached_info_with_online_status(router_id)
+        all_cached_info = get_all_cached_info_with_online_status(router)
         if not all_cached_info:
             return JsonResponse(
                 data=[], safe=False)
@@ -204,7 +219,7 @@ def fetch_cached_info(request, router_id, info_name):
         serializer = InfoSerializer(data=all_cached_info)
         if serializer.is_valid():
             return JsonResponse(
-                data=serializer.get_datatable_data(router_id, info_name),
+                data=serializer.get_datatable_data(router, info_name),
                 safe=False)
         else:
             return JsonResponse(data=serializer.errors, status=400)
@@ -288,7 +303,7 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
             serializer.is_valid(raise_exception=True)
             self.serialized_cached_device_data = serializer.data
 
-            all_info = fetch_new_info_save_and_set_cache(self.object.router.id)
+            all_info = fetch_new_info_save_and_set_cache(router=self.object.router)
             serializer = InfoSerializer(data=all_info)
             serializer.is_valid(raise_exception=True)
             kwargs.update(serializer.get_device_update_form_kwargs(
@@ -301,8 +316,7 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         return kwargs
 
     def get_queryset(self):
-        router_id = self.kwargs["router_id"]
-        router = get_object_or_404(Router, id=router_id)
+        router = get_object_or_404(Router, id=int(self.kwargs["router_id"]))
         return super().get_queryset().filter(router=router)
 
     def get_context_data(self, **kwargs):
@@ -391,13 +405,12 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         # fetch_new_info_save_and_set_cache method.
         # We put it as a new method to facilitate tests.
 
-        fetch_new_info_save_and_set_cache(self.kwargs["router_id"])
+        fetch_new_info_save_and_set_cache(router=self.object.router)
 
 
-def do_delete(router_id, name, delete_type):
+def do_delete(router, name, delete_type):
     # delete info on router, and re fetch and cache the info
     assert delete_type in ["forbid_domain", "limit_time"]
-    router = Router.objects.get(id=router_id)
     client = router.get_client()
 
     if delete_type == "forbid_domain":
@@ -406,7 +419,7 @@ def do_delete(router_id, name, delete_type):
         client.delete_limit_time(limit_time_name=name)
 
     # update cached device info (especially those not present when fetch)
-    fetch_new_info_save_and_set_cache(router_id)
+    fetch_new_info_save_and_set_cache(router=router)
 
 
 def get_mac_choice_tuple(router: Router) -> list:
@@ -425,14 +438,14 @@ def get_mac_choice_tuple(router: Router) -> list:
     return apply_to_choices
 
 
-def find_available_name(router_id, prefix):
+def find_available_name(router, prefix):
     assert prefix in ["limit_time", "forbid_domain"]
-    fetch_new_info_save_and_set_cache(router_id)
+    fetch_new_info_save_and_set_cache(router=router)
 
     if prefix == "limit_time":
-        all_data: dict = get_cached_limit_times(router_id)
+        all_data: dict = get_cached_limit_times(router.id)
     else:
-        all_data: dict = get_cached_forbid_domains(router_id)
+        all_data: dict = get_cached_forbid_domains(router.id)
 
     all_keys: list = list(all_data.keys())
     numbers = []
@@ -569,8 +582,6 @@ def edit_limit_time(request, router_id, limit_time_name):
         form = LimitTimeEditForm(**kwargs)
 
         if form.is_valid():
-            client = router.get_client()
-
             is_editing_exist_limit_time = False
             apply_to_changed = False
             new_apply_to = form.cleaned_data["apply_to"]
@@ -589,8 +600,7 @@ def edit_limit_time(request, router_id, limit_time_name):
             if add_new or is_editing_exist_limit_time:
                 apply_to_initial = []
                 try:
-                    limit_time_name = add_new_limit_time_from_form_data(
-                        client, router_id, form)
+                    limit_time_name = add_new_limit_time_from_form_data(router, form)
                 except Exception as e:
                     messages.add_message(
                         request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
@@ -602,8 +612,8 @@ def edit_limit_time(request, router_id, limit_time_name):
 
             if apply_to_changed:
                 try:
-                    apply_limit_time(client, router_id, limit_time_name,
-                                     apply_to_initial, new_apply_to)
+                    apply_limit_time(
+                        router, limit_time_name, apply_to_initial, new_apply_to)
                 except Exception as e:
                     messages.add_message(
                         request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
@@ -616,10 +626,10 @@ def edit_limit_time(request, router_id, limit_time_name):
             if form.has_changed():
                 if is_editing_exist_limit_time:
                     do_delete(
-                        router_id, name=limit_time_name_copy,
+                        router, name=limit_time_name_copy,
                         delete_type="limit_time")
                 else:
-                    fetch_new_info_save_and_set_cache(router_id)
+                    fetch_new_info_save_and_set_cache(router=router)
 
             if add_new or is_editing_exist_limit_time:
                 return HttpResponseRedirect(
@@ -635,28 +645,32 @@ def edit_limit_time(request, router_id, limit_time_name):
     })
 
 
-def add_new_limit_time_from_form_data(client, router_id, form):
-    limit_time_name = find_available_name(router_id, "limit_time")
+def add_new_limit_time_from_form_data(router, form):
+    limit_time_name = find_available_name(router, "limit_time")
     add_limit_time_kwargs = dict(
         limit_time_name=limit_time_name,
         desc_name=form.cleaned_data["name"],
         start_time=form.cleaned_data["start_time"],
         end_time=form.cleaned_data["end_time"]
     )
+
     for day in days_const:
         add_limit_time_kwargs[day] = day in form.cleaned_data["days"]
+
+    client = router.get_client()
     client.add_limit_time(**add_limit_time_kwargs)
     return limit_time_name
 
 
-def apply_limit_time(client, router_id, limit_time_name, initial_device_names,
-                     new_device_names):
+def apply_limit_time(
+        router, limit_time_name, initial_device_names, new_device_names):
+    client = router.get_client()
     set_info_tuple = []
     added_apply_devices = set(new_device_names) - set(initial_device_names)
     removed_apply_devices = set(initial_device_names) - set(new_device_names)
     for mac in added_apply_devices:
         cached_data = DEFAULT_CACHE.get(
-            get_router_device_cache_key(router_id, mac))
+            get_router_device_cache_key(router.id, mac))
         cached_limit_time = cached_data.get("limit_time", "")
         if cached_limit_time == "":
             cached_limit_time = []
@@ -681,7 +695,7 @@ def apply_limit_time(client, router_id, limit_time_name, initial_device_names,
         )
     for mac in removed_apply_devices:
         cached_data = DEFAULT_CACHE.get(
-            get_router_device_cache_key(router_id, mac), {})
+            get_router_device_cache_key(router.id, mac), {})
         cached_limit_time = cached_data.get("limit_time", "")
         if cached_limit_time == "":
             # when will this happen?
@@ -708,15 +722,16 @@ def apply_limit_time(client, router_id, limit_time_name, initial_device_names,
     for kwargs, mac, cached_data in set_info_tuple:
         client.set_host_info(**kwargs)
         DEFAULT_CACHE.set(
-            get_router_device_cache_key(router_id, mac), cached_data)
+            get_router_device_cache_key(router.id, mac), cached_data)
 
 
 @login_required
 def delete_limit_time(request, router_id, limit_time_name):
+    router = get_object_or_404(Router, id=router_id)
     if request.method != "POST":
         return HttpResponseForbidden()
     try:
-        do_delete(router_id, name=limit_time_name, delete_type="limit_time")
+        do_delete(router, name=limit_time_name, delete_type="limit_time")
     except Exception as e:
         return JsonResponse(
             data={"error": f"{type(e).__name__}： {str(e)}"}, status=400)
@@ -793,7 +808,7 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
             client = router.get_client()
 
             if add_new:
-                forbid_domain_name = find_available_name(router_id, "forbid_domain")
+                forbid_domain_name = find_available_name(router, "forbid_domain")
                 try:
                     client.add_forbid_domain(
                         forbid_domain_name=forbid_domain_name,
@@ -887,7 +902,7 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                         })
 
             if form.has_changed():
-                fetch_new_info_save_and_set_cache(router_id)
+                fetch_new_info_save_and_set_cache(router=router)
 
             if add_new:
                 return HttpResponseRedirect(
@@ -906,10 +921,11 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
 
 @login_required
 def delete_forbid_domain(request, router_id, forbid_domain_name):
+    router = get_object_or_404(Router, id=router_id)
     if request.method != "POST":
         return HttpResponseForbidden()
     try:
-        do_delete(router_id, name=forbid_domain_name, delete_type="forbid_domain")
+        do_delete(router, name=forbid_domain_name, delete_type="forbid_domain")
     except Exception as e:
         return JsonResponse(
             data={"error": f"{type(e).__name__}： {str(e)}"}, status=400)
