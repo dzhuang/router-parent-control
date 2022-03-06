@@ -11,7 +11,8 @@ from pyrouter.router_client import RouterClient
 
 from my_router.constants import ROUTER_STATUS_CHOICES, router_status
 from my_router.fields import MACAddressField
-from my_router.utils import DEFAULT_CACHE, get_device_db_cache_key
+from my_router.utils import (DEFAULT_CACHE, get_device_db_cache_key,
+                             get_router_device_cache_key)
 
 
 class Router(models.Model):
@@ -135,12 +136,19 @@ class Device(models.Model):
             kwargs['update_fields'] = changed_fields
         super().save(*args, **kwargs)
 
-    def update_cache(self):
+    def update_name_cache(self):
+        # The name cache is a cache whose key is build by self.mac, and the value
+        # is the name. It is used to decide whether we need to save the
+        # device: if the name is not changed, then we skip the saving.
         DEFAULT_CACHE.set(get_device_db_cache_key(self.mac), self.name)
 
+    def remove_cache(self):
+        # Remove both the name cache and router device cache.
+        DEFAULT_CACHE.delete(get_device_db_cache_key(self.mac))
+        DEFAULT_CACHE.delete(get_router_device_cache_key(self.router.id, self.mac))
+
     def __str__(self):
-        return _("{device} on {router}").format(
-            device=self.name, router=self.router.name)
+        return _("{device} on {router}").format(device=self.name, router=self.router)
 
     def get_absolute_url(self):
         return reverse("device-edit", args=(self.router.pk, self.pk,))
