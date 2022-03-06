@@ -109,7 +109,7 @@ class DeviceJsonSerializer(serializers.Serializer):
         data["forbid_domain"] = split_name(data.get("forbid_domain", ""))
         data["down_limit"] = int(data["down_limit"])
         data["up_limit"] = int(data["up_limit"])
-        if data["is_blocked"]:
+        if data["is_blocked"] or data["ip"] == "0.0.0.0":
             data["online"] = False
         return super().to_internal_value(data)
 
