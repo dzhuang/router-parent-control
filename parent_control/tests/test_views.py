@@ -984,6 +984,59 @@ class EditLimitTimeTest(
             # set_host_info is not reached
             self.assertEqual(self.mock_set_host_info.call_count, 2)
 
+    def test_edit_time_changed_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+            resp = self.client.post(
+                self.limit_time_edit_url(),
+
+                # This makes the change
+                data=self.edit_limit_time_post_data(
+                    # default days is ['sat', 'sun']
+                    days=['fri', 'sat', 'sun'],
+                    apply_to=[BLOCKED_DEVICE1_MAC, LIMIT_DEVICE2_MAC])
+            )
+
+            expected_new_limit_time_name = "limit_time_2"
+            expected_redirect_url = self.limit_time_edit_url(
+                expected_new_limit_time_name)
+
+            self.assertRedirects(
+                resp, expected_redirect_url, status_code=302,
+                fetch_redirect_response=False)
+
+            self.mock_delete_limit_time.assert_called_once_with(
+                limit_time_name='limit_time_1')
+
+            expected_add_call_kwargs = dict(
+                limit_time_name=expected_new_limit_time_name,
+                desc_name='PRE_SUPPER',
+                start_time='17:30',
+                end_time='18:10',
+                mon=False,
+                tue=False,
+                wed=False,
+                thu=False,
+                fri=True,
+                sat=True,
+                sun=True
+            )
+
+            expected_add_call_kwargs["limit_time_name"] = (
+                expected_new_limit_time_name)
+
+            self.mock_add_limit_time.assert_called_once_with(
+                **expected_add_call_kwargs
+            )
+
+            # Once in get_available_name, once when done
+            self.assertEqual(mock_fetch_new.call_count, 2)
+            self.assertAddMessageCallCount(0)
+
+            # set_host_info is not reached
+            self.assertEqual(self.mock_set_host_info.call_count, 2)
+
 
 class EditForbidDomainTest(
         RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing, CacheMixin,
@@ -1263,3 +1316,18 @@ class DeleteForbidDomainTest(
         self.assertEqual(resp.status_code, 400)
         self.assertIn(expected_message, resp.json()["error"])
         mock_fetch_new.assert_not_called()
+
+
+class ListForbidDomainTest(
+        RequestTestMixin, MockRouterClientMixin, CacheMixin, TestCase):
+    def limit_forbid_domain_url(self):
+        return reverse("forbid_domain-list", args=(self.router.id,))
+
+    def test_get_ok(self):
+        resp = self.client.get(self.limit_forbid_domain_url())
+        self.assertEqual(resp.status_code, 200)
+
+    def test_login_required(self):
+        self.client.logout()
+        resp = self.client.get(self.limit_forbid_domain_url())
+        self.assertEqual(resp.status_code, 302)
