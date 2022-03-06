@@ -669,6 +669,44 @@ class ListLimitTimeTest(
         self.assertEqual(resp.status_code, 302)
 
 
+class DeleteLimitTimeTest(
+        RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing, CacheMixin,
+        TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
+        fetch_new_info_save_and_set_cache(router=self.router)
+
+    def limit_time_delete_url(self, limit_time_name: str | int = "limit_time_1"):
+        return reverse("limit_time-delete", args=(self.router.id, limit_time_name))
+
+    def test_delete_get_403(self):
+        resp = self.client.get(self.limit_time_delete_url())
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+            resp = self.client.post(self.limit_time_delete_url())
+
+        self.assertEqual(resp.status_code, 200)
+        mock_fetch_new.assert_called_once()
+
+    def test_delete_fail(self):
+        expected_message = "foo bar"
+        self.mock_delete_limit_time.side_effect = RuntimeError(expected_message)
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+            resp = self.client.post(self.limit_time_delete_url())
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn(expected_message, resp.json()["error"])
+        mock_fetch_new.assert_not_called()
+
+
 class EditLimitTimeTest(
         RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing, CacheMixin,
         TestCase):
@@ -1185,3 +1223,43 @@ class EditForbidDomainTest(
 
             # set_host_info called twice
             self.assertEqual(self.mock_set_host_info.call_count, 2)
+
+
+class DeleteForbidDomainTest(
+        RequestTestMixin, MockRouterClientMixin, MockAddMessageMixing, CacheMixin,
+        TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.set_get_restructured_info_dicts_ret(restructured_info_dicts1)
+        fetch_new_info_save_and_set_cache(router=self.router)
+
+    def forbid_domain_delete_url(
+            self, forbid_domain_name: str | int = "forbid_domain_3"):
+        return reverse("forbid_domain-delete",
+                       args=(self.router.id, forbid_domain_name))
+
+    def test_delete_get_403(self):
+        resp = self.client.get(self.forbid_domain_delete_url())
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_ok(self):
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+            resp = self.client.post(self.forbid_domain_delete_url())
+
+        self.assertEqual(resp.status_code, 200)
+        mock_fetch_new.assert_called_once()
+
+    def test_delete_fail(self):
+        expected_message = "foo bar"
+        self.mock_delete_forbid_domain.side_effect = RuntimeError(expected_message)
+        with mock.patch(
+                "my_router.views.fetch_new_info_save_and_set_cache"
+        ) as mock_fetch_new:
+            resp = self.client.post(self.forbid_domain_delete_url())
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn(expected_message, resp.json()["error"])
+        mock_fetch_new.assert_not_called()
