@@ -33,7 +33,7 @@ services:
       - POSTGRES_PASSWORD=pc_user_pw
       - POSTGRES_DB=parent_control_db
     volumes:
-      - postgres_data:/var/lib/postgresql/form_data/
+      - postgres_data:/var/lib/postgresql/data/
     restart: always
 
   redis_service:
