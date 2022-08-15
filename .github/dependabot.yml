@@ -6,6 +6,6 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/pysubconvert"
+    directory: "/parent_control"
     schedule:
       interval: "weekly"
