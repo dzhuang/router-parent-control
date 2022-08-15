@@ -18,6 +18,10 @@ services:
       - PARENT_CONTROL_SERVER_DB=parent_control_db
       - PARENT_CONTROL_SERVER_DEBUG=on
       - PARENT_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
+      - PARENT_CONTROL_ALLOWED_HOST_router=foo.com
+      - PARENT_CONTROL_ALLOWED_HOST_local=192.168.1.1
+      - PARENT_CONTROL_CSRF_TRUSTED_ORIGINS_router=https://foo.com
+      - PARENT_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.1.1
 
       - DJANGO_SUPERUSER_USERNAME=pc_test
       - DJANGO_SUPERUSER_PASSWORD=pc_test

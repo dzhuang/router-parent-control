@@ -67,6 +67,15 @@ custom_allowed_hosts = [
 if custom_allowed_hosts:  # pragma: no cover
     ALLOWED_HOSTS = ALLOWED_HOSTS + tuple(custom_allowed_hosts)
 
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1"]
+
+custom_allowed_csrf_origins = [
+    value for item, value in list(dict(os.environ).items())
+    if item.startswith("PARENT_CONTROL_CSRF_TRUSTED_ORIGINS")]
+
+if custom_allowed_csrf_origins:  # pragma: no cover
+    CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS + custom_allowed_csrf_origins
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -78,7 +87,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "crispy_forms",
     "django_celery_beat",
-    # 'django_celery_results',
     'corsheaders',
     'rest_framework.authtoken',
     'rest_framework',
