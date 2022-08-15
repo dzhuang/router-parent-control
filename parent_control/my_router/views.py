@@ -279,6 +279,12 @@ class DeviceForm(StyledModelForm):
             self.helper.add_input(
                 Submit("submit", _("Submit")))
 
+    def clean_added_datetime(self):
+        return self.initial['added_datetime']
+
+    def clean_mac(self):
+        return self.initial['mac']
+
 
 class DeviceUpdateView(LoginRequiredMixin, UpdateView):
     object: Device

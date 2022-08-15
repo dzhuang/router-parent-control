@@ -170,8 +170,6 @@ TIME_ZONE = 'Hongkong'
 
 USE_I18N = True
 
-USE_L10N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
@@ -263,12 +261,6 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 LANGUAGE_CODE = os.environ.get("PARENT_CONTROL_SERVER_LANGUAGE_CODE", 'zh-hans')
 
 TIME_ZONE = os.environ.get("PARENT_CONTROL_SERVER_TZ", 'Asia/Shanghai')
-
-USE_I18N = True
-
-USE_L10N = True
-
-USE_TZ = True
 
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = 'profile'
