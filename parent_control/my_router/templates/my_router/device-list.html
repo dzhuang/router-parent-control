@@ -13,7 +13,7 @@
 {% endblock %}
 
 {% block content %}
-    <h1>{% trans "List of devices" %}</h1>
+    <h1>{% trans "List of devices" %} <a class="btn btn-danger" style="margin-left: 5em;" type="button" id="reboot-device" href="{% url 'router-reboot' router_id %}"> {% trans "Reboot" %}</a></h1>
     <hr>
     <div>
         <input type="checkbox" id="offline-only"> {% trans "Offline only" %}

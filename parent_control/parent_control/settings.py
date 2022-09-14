@@ -271,7 +271,7 @@ LANGUAGE_CODE = os.environ.get("PARENT_CONTROL_SERVER_LANGUAGE_CODE", 'zh-hans')
 TIME_ZONE = os.environ.get("PARENT_CONTROL_SERVER_TZ", 'Asia/Shanghai')
 
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = 'profile'
+LOGIN_REDIRECT_URL = 'home'
 
 if sys.platform.lower().startswith("win"):  # pragma: no cover
     STATIC_ROOT = BASE_DIR / "static"

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-02-08 17:58+0800\n"
+"POT-Creation-Date: 2022-09-14 23:00+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -35,6 +35,27 @@ msgstr "可用"
 
 msgid "Disabled"
 msgstr "已停用"
+
+msgid "Monday"
+msgstr ""
+
+msgid "Tuesday"
+msgstr ""
+
+msgid "Wednesday"
+msgstr ""
+
+msgid "Thursday"
+msgstr ""
+
+msgid "Friday"
+msgstr ""
+
+msgid "Saturday"
+msgstr ""
+
+msgid "Sunday"
+msgstr ""
 
 msgid "Enter a valid MAC address."
 msgstr "请输入一个有效的MAC地址"
@@ -119,14 +140,20 @@ msgid "{device} on {router}"
 msgstr "{router}上的{device}"
 
 #, python-brace-format
-msgid "must be 0 or 1, while got {form_data}."
-msgstr "必须为0或1，而得到的是{form_data}."
+msgid "must be 0 or 1, while got {data}."
+msgstr "必须为0或1，而得到的是{data}."
+
+msgid "This field is required."
+msgstr ""
 
 msgid "Done"
 msgstr "完成"
 
 msgid "List of devices"
 msgstr "设备列表"
+
+msgid "Reboot"
+msgstr "重启"
 
 msgid "Offline only"
 msgstr "仅离线设备"
@@ -194,6 +221,9 @@ msgstr "域名"
 msgid "Apply to"
 msgstr "应用于"
 
+msgid "Delete"
+msgstr ""
+
 msgid "List of Limit time"
 msgstr "允许时间列表"
 
@@ -234,25 +264,7 @@ msgstr ""
 msgid "Update Device {device_name}"
 msgstr "更新设备设置 {device_name}"
 
-msgid "Monday"
-msgstr ""
-
-msgid "Tuesday"
-msgstr ""
-
-msgid "Wednesday"
-msgstr ""
-
-msgid "Thursday"
-msgstr ""
-
-msgid "Friday"
-msgstr ""
-
-msgid "Saturday"
-msgstr ""
-
-msgid "Sunday"
+msgid "Days"
 msgstr ""
 
 msgid "Add"
@@ -269,6 +281,16 @@ msgstr "编辑允许时间"
 
 msgid "Domain name or keyword in domain name"
 msgstr "域名或域名中的关键字"
+
+msgid "Edit forbid domain"
+msgstr "编辑禁止域名"
+
+msgid "Device rebooted."
+msgstr "设备完成重启."
+
+#, python-format
+msgid "Reboot %s"
+msgstr "重启 %s"
 
 msgid "Parent Control"
 msgstr "家长控制"
