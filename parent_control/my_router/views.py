@@ -40,6 +40,17 @@ def routers_context_processor(request):
     }
 
 
+def home(request):
+    routers = Router.objects.all()
+
+    if routers.count() != 1:
+        return HttpResponseRedirect(reverse("profile"))
+
+    return HttpResponseRedirect(
+        reverse(
+            "device-list", args=(routers[0].id,)))
+
+
 def fetch_new_info_save_and_set_cache(router_id: int | None = None,
                                       router: Router | None = None):
     """
@@ -937,3 +948,36 @@ def delete_forbid_domain(request, router_id, forbid_domain_name):
             data={"error": f"{type(e).__name__}： {str(e)}"}, status=400)
 
     return JsonResponse(data={"success": True})
+
+
+class RebootForm(StyledForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper.add_input(
+            Submit("reboot", _("Reboot"), css_class="btn btn-danger"))
+
+
+@login_required
+def reboot_router(request, router_id):
+    router = get_object_or_404(Router, id=router_id)
+
+    if request.method == "POST":
+        try:
+            client: RouterClient = router.get_client()
+            client.reboot()
+            messages.add_message(
+                request, messages.INFO, _("Device rebooted."))
+        except Exception as e:
+            messages.add_message(
+                request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+        return HttpResponseRedirect(
+            reverse(
+                "device-list", args=(router_id,)))
+
+    else:
+        form = RebootForm()
+
+    return render(request, "generic-form-page.html", {
+        "form": form,
+        "form_description": _("Reboot %s") % router.name,
+        })
