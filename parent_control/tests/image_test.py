@@ -24,4 +24,9 @@ def test_login():
     resp = session.post(url, data=data)
 
     assert resp.status_code == 200, resp.content.decode()
+
+    profile_url = "http://127.0.0.1:8030/profile/"
+
+    resp = session.get(profile_url)
+
     assert 'name="api_token"' in resp.content.decode()

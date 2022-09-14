@@ -16,7 +16,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(
         template_name='registration/logged_out.html'),
          name='logout'),
-    path('profile', auth.user_profile, name='profile'),
+    path('profile/', auth.user_profile, name='profile'),
     path('', views.home, name='home'),
 
     path('router/<router_id>/<info_name>/ajax/', views.fetch_cached_info,

@@ -42,7 +42,8 @@ def routers_context_processor(request):
 
 def home(request):
     routers = Router.objects.all()
-    if routers.count() > 1:
+
+    if routers.count() != 1:
         return HttpResponseRedirect(reverse("profile"))
 
     return HttpResponseRedirect(

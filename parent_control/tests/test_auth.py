@@ -23,6 +23,10 @@ class AuthTest(RequestTestMixin, TestCase):
     def profile_url(self):
         return reverse("profile")
 
+    @property
+    def home_url(self):
+        return reverse("home")
+
     def test_non_user_get_login(self):
         self.client.logout()
         response = self.client.get(self.login_url)
@@ -30,10 +34,7 @@ class AuthTest(RequestTestMixin, TestCase):
 
     def test_user_get_login(self):
         response = self.client.get(self.login_url)
-
-        self.assertRedirects(
-            response, self.profile_url, status_code=302,
-            target_status_code=200, fetch_redirect_response=True)
+        self.assertEqual(response.status_code, 302)
 
     def test_user_without_token_get_login(self):
         # Make sure this rendered without problem
@@ -43,9 +44,7 @@ class AuthTest(RequestTestMixin, TestCase):
         self.client.force_login(user)
         response = self.client.get(self.login_url)
 
-        self.assertRedirects(
-            response, self.profile_url, status_code=302,
-            target_status_code=200, fetch_redirect_response=True)
+        self.assertEqual(response.status_code, 302)
 
     def test_user_post_update_email(self):
         # Only email is writable
