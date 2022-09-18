@@ -10,7 +10,6 @@ django-cors-headers
 django-crispy-forms
 
 django-npm
-
 psycopg2-binary
 
 git+https://github.com/dzhuang/pyrouter.git
