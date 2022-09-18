@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
+from django.views.i18n import JavaScriptCatalog
 
 from my_router import auth, views
 
@@ -43,4 +44,8 @@ urlpatterns = [
 
     path('router/<router_id>/reboot/',
          views.reboot_router, name="router-reboot"),
+
+    path(r'jsi18n/',
+         JavaScriptCatalog.as_view(),
+         name='javascript-catalog')
 ]

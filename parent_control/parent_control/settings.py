@@ -295,3 +295,7 @@ if local_settings is not None:  # pragma: no cover
         import local_settings
     except ImportError:  # pragma: no cover
         pass
+
+
+if DEBUG:
+    ALLOWED_HOSTS = ("*",)
