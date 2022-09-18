@@ -489,7 +489,7 @@ class TimePickerInput(AdminTimeWidget):
         extend = False
         js = [
             # "admin/js/calendar.js",
-            "js/DateTimeShortcuts.js",
+            "js/LimitTimeWidgetShortcuts.js",
         ]
 
 

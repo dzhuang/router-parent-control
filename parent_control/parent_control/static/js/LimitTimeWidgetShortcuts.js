@@ -5,18 +5,9 @@
 'use strict';
 {
     const DateTimeShortcuts = {
-        calendars: [],
+        calendarDay: [],
         calendarInputs: [],
         clockInputs: [],
-        clockHours: {
-            default_: [
-                [gettext_noop('Now'), -1],
-                [gettext_noop('Midnight'), 0],
-                [gettext_noop('6 a.m.'), 6],
-                [gettext_noop('Noon'), 12],
-                [gettext_noop('6 p.m.'), 18]
-            ]
-        },
         clockEndInputs: [],
         minutesInputs: [],
         minutesOptions: {
@@ -30,10 +21,6 @@
         dismissMinuteFunc: [],
 
         dismissClockFunc: [],
-        dismissCalendarFunc: [],
-        calendarDivName1: 'calendarbox', // name of calendar <div> that gets toggled
-        calendarDivName2: 'calendarin', // name of <div> that contains calendar
-        calendarLinkName: 'calendarlink', // name of the link that is used to toggle
         minutesDivName: 'miniutebox',
         minutesLinkName: 'miniutelink',
         clockDivName: 'clockbox', // name of clock <div> that gets toggled
@@ -311,11 +298,9 @@
         },
         // Add calendar widget to a given field.
         addCalendar: function(inp) {
-            const num = DateTimeShortcuts.calendars.length;
+            const num = DateTimeShortcuts.calendarDay.length;
 
             DateTimeShortcuts.calendarInputs[num] = inp;
-            DateTimeShortcuts.dismissCalendarFunc[num] = function() {
-                DateTimeShortcuts.dismissCalendar(num); return true; };
 
             // Shortcut links (calendar icon and "Today" link)
             const shortcuts_span = document.createElement('span');
