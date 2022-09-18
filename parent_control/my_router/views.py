@@ -6,6 +6,7 @@ from datetime import datetime, time
 from crispy_forms.layout import Submit
 from django import forms
 from django.contrib import messages
+from django.contrib.admin.widgets import AdminTimeWidget
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -475,8 +476,34 @@ def find_available_name(router, prefix):
     return f"{prefix}_{_number}"
 
 
-class TimePickerInput(forms.TimeInput):
+class SelectDay(forms.SelectMultiple):
+    def __init__(self, attrs=None, choices=()):
+        attrs = {"class": "vSelectDay", **(attrs or {})}
+        super().__init__(attrs=attrs, choices=choices)
+
+
+class TimePickerInput(AdminTimeWidget):
     input_type = 'time'
+
+    class Media:
+        extend = False
+        js = [
+            # "admin/js/calendar.js",
+            "js/DateTimeShortcuts.js",
+        ]
+
+
+class TimePickerEndInput(TimePickerInput):
+    def __init__(self, attrs=None, format=None):
+        attrs = {"class": "vTimeEndField", "size": "8", **(attrs or {})}
+        super().__init__(attrs=attrs, format=format)
+
+
+class MinutesWidget(forms.NumberInput):
+    class_name = "vMinutesField"
+
+    def __init__(self, attrs=None):
+        super().__init__(attrs={"class": self.class_name, **(attrs or {})})
 
 
 @login_required
@@ -495,6 +522,10 @@ def turn_str_time_to_time_obj(str_time):
 
 
 class LimitTimeEditForm(StyledForm):
+    class Media:
+        css = {
+            "all": ("admin/css/widgets.css",)
+        }
 
     def __init__(self, add_new, name, start_time, end_time,
                  days,
@@ -513,15 +544,23 @@ class LimitTimeEditForm(StyledForm):
             disabled=disabled, initial=start_time,
             widget=TimePickerInput)
 
+        self.fields["length"] = forms.IntegerField(
+            label=_("minutes"),
+            required=False,
+            disabled=disabled, initial=None,
+            widget=MinutesWidget
+        )
+
         self.fields["end_time"] = forms.TimeField(
             label=_("End time"),
             disabled=disabled, initial=end_time,
-            widget=TimePickerInput)
+            widget=TimePickerEndInput)
 
         self.fields["days"] = forms.MultipleChoiceField(
             label=_("Days"), initial=days,
             disabled=disabled, choices=DAYS_CHOICES,
-            required=False
+            required=False,
+            widget=SelectDay
         )
 
         self.fields["apply_to"] = forms.MultipleChoiceField(
