@@ -547,8 +547,8 @@ class LimitTimeEditForm(StyledForm):
         self.fields["length"] = forms.ChoiceField(
             label=_("length"),
             required=False,
-            disabled=disabled, initial=(None, None),
-            choices=tuple((i, i) for i in range(1, 361)),
+            disabled=disabled,
+            choices=(("", "----------"),) + tuple((i, i) for i in range(1, 361)),
             widget=MinutesWidget,
             help_text=_("Length of time in minutes")
         )
