@@ -499,7 +499,7 @@ class TimePickerEndInput(TimePickerInput):
         super().__init__(attrs=attrs, format=format)
 
 
-class MinutesWidget(forms.NumberInput):
+class MinutesWidget(forms.Select):
     class_name = "vMinutesField"
 
     def __init__(self, attrs=None):
@@ -544,11 +544,13 @@ class LimitTimeEditForm(StyledForm):
             disabled=disabled, initial=start_time,
             widget=TimePickerInput)
 
-        self.fields["length"] = forms.IntegerField(
+        self.fields["length"] = forms.ChoiceField(
             label=_("length"),
             required=False,
-            disabled=disabled, initial=None,
-            widget=MinutesWidget
+            disabled=disabled, initial=(None, None),
+            choices=tuple((i, i) for i in range(1, 361)),
+            widget=MinutesWidget,
+            help_text=_("Length of time in minutes")
         )
 
         self.fields["end_time"] = forms.TimeField(

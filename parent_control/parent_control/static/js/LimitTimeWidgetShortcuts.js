@@ -16,7 +16,13 @@
                 [gettext_noop('15 minutes'), 15],
                 [gettext_noop('30 minutes'), 30],
                 [gettext_noop('45 minutes'), 45],
-                [gettext_noop('60 minutes'), 60],
+                [gettext_noop('1 hour'), 60],
+                [gettext_noop('90 minutes'), 90],
+                [gettext_noop('2 hours'), 120],
+                [gettext_noop('3 hours'), 180],
+                [gettext_noop('4 hours'), 240],
+                [gettext_noop('5 hours'), 300],
+                [gettext_noop('6 hours'), 360],
             ]
         },
         dismissMinuteFunc: [],
@@ -45,13 +51,13 @@
                     DateTimeShortcuts.addClockEnd(inp);
                     DateTimeShortcuts.addTimezoneWarning(inp);
                 }
-                else if (inp.type === 'number' && inp.classList.contains('vMinutesField')) {
-                    DateTimeShortcuts.addMinutes(inp);
-                }
             }
             for (const sel of document.getElementsByTagName('select')) {
                 if (sel.classList.contains('vSelectDay')) {
                     DateTimeShortcuts.addCalendar(sel);
+                }
+                else if (sel.classList.contains('vMinutesField')) {
+                    DateTimeShortcuts.addMinutes(sel);
                 }
             }
         },
@@ -106,20 +112,20 @@
             inp.parentNode.appendChild(document.createElement('br'));
             inp.parentNode.appendChild(warning);
         },
-        addMinutes: function (inp) {
+        addMinutes: function (sel) {
             const num = DateTimeShortcuts.minutesInputs.length;
-            DateTimeShortcuts.minutesInputs[num] = inp;
+            DateTimeShortcuts.minutesInputs[num] = sel;
 
             DateTimeShortcuts.minutesInputs[num].addEventListener('change', function(e){
                 DateTimeShortcuts.updateEndTime(num);
             })
 
-            DateTimeShortcuts.dismissClockFunc[num] = function() { DateTimeShortcuts.dismissMinutes(num); return true; };
+            DateTimeShortcuts.dismissMinuteFunc[num] = function() { DateTimeShortcuts.dismissMinutes(num); return true; };
 
             // Shortcut links (clock icon and "15 minutes" link)
             const shortcuts_span = document.createElement('span');
             shortcuts_span.className = DateTimeShortcuts.shortCutsClass;
-            inp.parentNode.insertBefore(shortcuts_span, inp.nextSibling);
+            sel.parentNode.insertBefore(shortcuts_span, sel.nextSibling);
             const m15_link = document.createElement('a');
             m15_link.href = "#";
             m15_link.textContent = gettext('15 minutes');
@@ -176,7 +182,7 @@
             // The list of choices can be overridden in JavaScript like this:
             // DateTimeShortcuts.minutesOptions.name = [['3 a.m.', 3]];
             // where name is the name attribute of the <input>.
-            const name = typeof DateTimeShortcuts.minutesOptions[inp.name] === 'undefined' ? 'default_' : inp.name;
+            const name = typeof DateTimeShortcuts.minutesOptions[sel.name] === 'undefined' ? 'default_' : sel.name;
             DateTimeShortcuts.minutesOptions[name].forEach(function(element) {
                 const time_link = quickElement('a', quickElement('li', minute_list), gettext(element[0]), 'href', '#');
                 time_link.addEventListener('click', function(e) {
@@ -220,6 +226,8 @@
 
             // Show the clock box
             minutes_box.style.display = 'block';
+
+            // dismiss the widget when click
             document.addEventListener('click', DateTimeShortcuts.dismissMinuteFunc[num]);
         },
         addClockEnd: function(inp) {
@@ -310,8 +318,19 @@
                 e.preventDefault();
                 DateTimeShortcuts.handleCalendarQuickLink(num, 0);
             });
+            const tomorrow_link = document.createElement('a');
+            tomorrow_link.href = '#';
+            tomorrow_link.appendChild(document.createTextNode(gettext('Tomorrow')));
+            tomorrow_link.addEventListener('click', function(e) {
+                e.preventDefault();
+                DateTimeShortcuts.handleCalendarQuickLink(num, 1);
+            });
+
             shortcuts_span.appendChild(document.createTextNode('\u00A0'));
             shortcuts_span.appendChild(today_link);
+            shortcuts_span.appendChild(document.createTextNode('\u00A0|\u00A0'));
+            shortcuts_span.appendChild(tomorrow_link);
+
         },
         handleCalendarQuickLink: function(num, offset) {
             const d = DateTimeShortcuts.now();
@@ -326,7 +345,6 @@
                 6: "sat",
                 0: "sun"
             }
-
             DateTimeShortcuts.calendarInputs[num].value = dObj[d.getDay()];
         }
     };
