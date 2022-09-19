@@ -12,6 +12,7 @@
         minutesInputs: [],
         minutesOptions: {
             default_: [
+                [gettext_noop('5 minutes'), 5],
                 [gettext_noop('15 minutes'), 15],
                 [gettext_noop('30 minutes'), 30],
                 [gettext_noop('45 minutes'), 45],
@@ -107,7 +108,6 @@
         },
         addMinutes: function (inp) {
             const num = DateTimeShortcuts.minutesInputs.length;
-            console.log(num);
             DateTimeShortcuts.minutesInputs[num] = inp;
 
             DateTimeShortcuts.minutesInputs[num].addEventListener('change', function(e){
@@ -224,7 +224,6 @@
         },
         addClockEnd: function(inp) {
             const num = DateTimeShortcuts.clockEndInputs.length;
-            console.log(num);
             DateTimeShortcuts.clockEndInputs[num] = inp;
         },
         // Add clock widget to a given field
@@ -235,8 +234,6 @@
             DateTimeShortcuts.clockInputs[num].addEventListener('change', function(e){
                 DateTimeShortcuts.updateEndTime(num);
             })
-
-            // DateTimeShortcuts.dismissClockFunc[num] = function() { DateTimeShortcuts.dismissClock(num); return true; };
 
             // Shortcut links (clock icon and "Now" link)
             const shortcuts_span = document.createElement('span');
@@ -258,7 +255,7 @@
         },
         handleMinutesQuicklink: function(num, val) {
             DateTimeShortcuts.minutesInputs[num].value = val;
-            DateTimeShortcuts.minutesInputs[num].focus();
+            // DateTimeShortcuts.minutesInputs[num].focus();
             DateTimeShortcuts.dismissMinutes(num);
             DateTimeShortcuts.updateEndTime(num);
         },
@@ -331,9 +328,6 @@
             }
 
             DateTimeShortcuts.calendarInputs[num].value = dObj[d.getDay()];
-            console.log(dObj[d.getDay()]);
-
-            console.log(d.getDay());
         }
     };
 

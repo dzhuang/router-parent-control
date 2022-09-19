@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-14 23:00+0800\n"
+"POT-Creation-Date: 2022-09-19 08:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -263,6 +263,9 @@ msgstr ""
 #, python-brace-format
 msgid "Update Device {device_name}"
 msgstr "更新设备设置 {device_name}"
+
+msgid "length"
+msgstr "时长"
 
 msgid "Days"
 msgstr ""

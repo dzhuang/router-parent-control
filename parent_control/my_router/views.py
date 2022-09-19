@@ -545,7 +545,7 @@ class LimitTimeEditForm(StyledForm):
             widget=TimePickerInput)
 
         self.fields["length"] = forms.IntegerField(
-            label=_("minutes"),
+            label=_("length"),
             required=False,
             disabled=disabled, initial=None,
             widget=MinutesWidget
