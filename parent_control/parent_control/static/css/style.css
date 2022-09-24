@@ -98,3 +98,31 @@
 .module table {
     border-collapse: collapse;
 }
+
+
+.loading-modal {
+    display:    none;
+    position:   fixed;
+    z-index:    1000;
+    top:        0;
+    left:       0;
+    height:     100%;
+    width:      100%;
+    background: rgba( 255, 255, 255, .8 )
+                url('../img/loading.gif')
+                50% 50%
+                no-repeat;
+    background-size: 50px 50px;
+    opacity: 0.80;
+    -ms-filter: progid:DXImageTransform.Microsoft.Alpha(Opacity = 80);
+    filter: alpha(opacity = 80)
+}
+
+
+body.loading {
+    overflow: hidden;
+}
+
+body.loading .loading-modal {
+    display: block;
+}

@@ -96,6 +96,7 @@
             </div><!--/.nav-collapse -->
         </div>
     </div>
+    <div class="loading-modal"></div>
 {% endblock %}
 
 {% block pre_root_container %}{% endblock %}
@@ -133,6 +134,11 @@
             }
             return cookieValue;
         }
+
+        $body = $("body");
+        $(".pc-submit-btn").on("click", function (){
+          $body.addClass("loading");
+        })
     </script>
 {% endblock %}
 </body>

@@ -289,7 +289,7 @@ class DeviceForm(StyledModelForm):
 
         if not has_error:
             self.helper.add_input(
-                Submit("submit", _("Submit")))
+                Submit("submit", _("Submit"), css_class="pc-submit-btn"))
 
     def clean_added_datetime(self):
         return self.initial['added_datetime']
@@ -381,6 +381,8 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
 
         try:
             remote_updated = self.update_router_data(data)
+            messages.add_message(
+                self.request, messages.INFO, _("Successfully updated device"))
         except Exception as e:
             messages.add_message(
                 self.request, messages.ERROR, f"{type(e).__name__}： {str(e)}")
@@ -573,10 +575,10 @@ class LimitTimeEditForm(StyledForm):
 
         if add_new:
             self.helper.add_input(
-                Submit("submit", _("Add")))
+                Submit("submit", _("Add"), css_class="pc-submit-btn"))
         else:
             self.helper.add_input(
-                Submit("submit", _("Update")))
+                Submit("submit", _("Update"), css_class="pc-submit-btn"))
 
     def clean(self):
         start_time = self.cleaned_data["start_time"]
@@ -690,6 +692,15 @@ def edit_limit_time(request, router_id, limit_time_name):
                     fetch_new_info_save_and_set_cache(router=router)
 
             if add_new or is_editing_exist_limit_time:
+                if add_new:
+                    messages.add_message(
+                        request, messages.INFO,
+                        _("Successfully added limit time."))
+                else:
+                    messages.add_message(
+                        request, messages.INFO,
+                        _("Successfully updated limit time."))
+
                 return HttpResponseRedirect(
                     reverse("limit_time-edit", args=(router_id, limit_time_name)))
 
@@ -826,10 +837,10 @@ class ForbidDomainEditForm(StyledForm):
 
         if add_new:
             self.helper.add_input(
-                Submit("submit", _("Add")))
+                Submit("submit", _("Add"), css_class="pc-submit-btn"))
         else:
             self.helper.add_input(
-                Submit("submit", _("Update")))
+                Submit("submit", _("Update"), css_class="pc-submit-btn"))
 
 
 @login_required
