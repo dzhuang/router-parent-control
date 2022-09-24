@@ -2,6 +2,10 @@
 {% load i18n %}
 {% load static %}
 
+{% block head_assets_form_media %}
+    <script src="{% static 'admin/js/core.js' %}"></script>
+{% endblock %}
+
 {% block content %}
     <a class="btn btn-default" href="{% url "limit_time-list" router_id %}">{% trans "List of Limit time" %}</a>
 

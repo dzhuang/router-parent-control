@@ -8,11 +8,6 @@
   {{ form_description }} - {% trans "Parent Control" %}
 {% endblock %}
 
-{% block head_assets_form_media %}
-    <script src="{% static 'admin/js/core.js' %}"></script>
-{% endblock %}
-
-
 {% block content %}
     {% block form_description %}
         {% if form_description %}
