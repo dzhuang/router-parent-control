@@ -1032,7 +1032,7 @@ class EditLimitTimeTest(
 
             # Once in get_available_name, once when done
             self.assertEqual(mock_fetch_new.call_count, 2)
-            self.assertAddMessageCallCount(0)
+            self.assertAddMessageCallCount(1)
 
             # set_host_info is not reached
             self.assertEqual(self.mock_set_host_info.call_count, 2)

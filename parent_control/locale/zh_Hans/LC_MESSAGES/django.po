@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-19 09:30+0800\n"
+"POT-Creation-Date: 2022-09-24 17:13+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -264,6 +264,9 @@ msgstr ""
 msgid "Update Device {device_name}"
 msgstr "更新设备设置 {device_name}"
 
+msgid "Successfully updated device."
+msgstr "成功更新了设备."
+
 msgid "length"
 msgstr "时长"
 
@@ -284,6 +287,12 @@ msgstr "\"end_time\" 应大于 \"start_time\""
 
 msgid "Edit limit time"
 msgstr "编辑允许时间"
+
+msgid "Successfully added limit time."
+msgstr "成功添加了允许时间."
+
+msgid "Successfully updated limit time."
+msgstr "成功更新了允许时间."
 
 msgid "Domain name or keyword in domain name"
 msgstr "域名或域名中的关键字"

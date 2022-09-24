@@ -382,7 +382,7 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         try:
             remote_updated = self.update_router_data(data)
             messages.add_message(
-                self.request, messages.INFO, _("Successfully updated device"))
+                self.request, messages.INFO, _("Successfully updated device."))
         except Exception as e:
             messages.add_message(
                 self.request, messages.ERROR, f"{type(e).__name__}： {str(e)}")
