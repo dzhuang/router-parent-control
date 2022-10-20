@@ -71,10 +71,14 @@ services:
       - PARENT_CONTROL_SERVER_DB_USER=pc_user
       - PARENT_CONTROL_SERVER_DB_PASSWORD=pc_user_pw
       - PARENT_CONTROL_SERVER_DB=parent_control_db
+      - RABBITMQ_HOST=pc_rabbit_host
+      - RABBITMQ_USER=pc_rabbit
+      - RABBITMQ_PASSWORD=pc_rabbit
     depends_on:
       - parent_control_service
       - postgres_db_service
       - redis_service
+      - rabbit
 
 volumes:
   redis_data:
