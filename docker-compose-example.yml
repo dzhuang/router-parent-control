@@ -6,7 +6,7 @@ services:
     ports:
       - 8030:8030
 #    volumes:
-      # - D:/dev/parent_control/parent_control/local_settings/:/opt/parent_control/local_settings/
+      # - ./log:/opt/parent_control/log
     environment:
       - PARENT_CONTROL_SERVER_SECRET_KEY=pclpourladjfoupuigjladfj2qyqewrozcoilqepouipoigpqeroilijapoiqer
       # - PARENT_CONTROL_SERVER_LANGUAGE_CODE=zh-hans
