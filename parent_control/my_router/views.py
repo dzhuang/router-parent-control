@@ -75,7 +75,9 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
     client: RouterClient = router.get_client()
     try:
         new_result = client.get_restructured_info_dicts()
-    except Exception:
+    except Exception as e:
+        logger.error(f'Failed to get info from router {Router.name}: '
+                     f'{type(e).__name__}: {str(e)}')
         return
 
     serializer = InfoSerializer(data=deepcopy(new_result))
