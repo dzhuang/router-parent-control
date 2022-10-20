@@ -87,6 +87,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "crispy_forms",
     "django_celery_beat",
+    "django_celery_results",
     'corsheaders',
     'rest_framework.authtoken',
     'rest_framework',

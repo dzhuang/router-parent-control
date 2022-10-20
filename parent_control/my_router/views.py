@@ -72,7 +72,10 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
     assert router is not None and router_id is not None
 
     client: RouterClient = router.get_client()
-    new_result = client.get_restructured_info_dicts()
+    try:
+        new_result = client.get_restructured_info_dicts()
+    except Exception:
+        return
 
     serializer = InfoSerializer(data=deepcopy(new_result))
     if not serializer.is_valid():
@@ -685,9 +688,14 @@ def edit_limit_time(request, router_id, limit_time_name):
 
             if form.has_changed():
                 if is_editing_exist_limit_time:
-                    do_delete(
-                        router, name=limit_time_name_copy,
-                        delete_type="limit_time")
+                    try:
+                        do_delete(
+                            router, name=limit_time_name_copy,
+                            delete_type="limit_time")
+                    except Exception as e:
+                        messages.add_message(
+                            request, messages.ERROR,
+                            f"{type(e).__name__}： {str(e)}")
                 else:
                     fetch_new_info_save_and_set_cache(router=router)
 
