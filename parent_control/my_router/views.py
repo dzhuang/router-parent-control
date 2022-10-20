@@ -797,6 +797,7 @@ def apply_limit_time(
              cached_data)
         )
     for kwargs, mac, cached_data in set_info_tuple:
+        print(kwargs)
         client.set_host_info(**kwargs)
         DEFAULT_CACHE.set(
             get_router_device_cache_key(router.id, mac), cached_data)
