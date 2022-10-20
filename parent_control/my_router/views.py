@@ -748,6 +748,9 @@ def apply_limit_time(
     set_info_tuple = []
     added_apply_devices = set(new_device_names) - set(initial_device_names)
     removed_apply_devices = set(initial_device_names) - set(new_device_names)
+
+    allowed_limit_times = get_cached_limit_times(router.id)
+
     for mac in added_apply_devices:
         cached_data = DEFAULT_CACHE.get(
             get_router_device_cache_key(router.id, mac))
@@ -759,7 +762,9 @@ def apply_limit_time(
 
         cached_limit_time = list(
             set(cached_limit_time + [limit_time_name]))
-        cached_data["limit_time"] = ",".join(cached_limit_time)
+
+        limit_times = [lt for lt in cached_limit_time if lt in allowed_limit_times]
+        cached_data["limit_time"] = ",".join(limit_times)
 
         set_info_tuple.append(
             (dict(
@@ -785,7 +790,10 @@ def apply_limit_time(
 
         cached_limit_time = list(
             set(cached_limit_time) - {limit_time_name})
-        cached_data["limit_time"] = ",".join(cached_limit_time)
+
+        limit_times = [lt for lt in cached_limit_time if lt in allowed_limit_times]
+
+        cached_data["limit_time"] = ",".join(limit_times)
 
         set_info_tuple.append(
             (dict(
