@@ -808,7 +808,6 @@ def apply_limit_time(
              cached_data)
         )
     for kwargs, mac, cached_data in set_info_tuple:
-        logger.info(str(kwargs))
         client.set_host_info(**kwargs)
         DEFAULT_CACHE.set(
             get_router_device_cache_key(router.id, mac), cached_data)
@@ -919,6 +918,8 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                 apply_to_changed = True
 
             if apply_to_changed:
+                # fixme: add allowed_forbid_domains
+
                 set_info_tuple = []
                 added_apply_devices = set(new_apply_to) - set(apply_to_initial)
                 removed_apply_devices = set(apply_to_initial) - set(new_apply_to)
