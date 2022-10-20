@@ -243,8 +243,6 @@ REST_FRAMEWORK = {
 redis_location = os.getenv('PARENT_CONTROL_SERVER_REDIS_LOCATION', None)
 redis_cache_location = (
     f"{redis_location}/0" if redis_location else "redis://127.0.0.1:6379/0")
-redis_backend_location = (
-    f"{redis_location}/1" if redis_location else "redis://127.0.0.1:6379/1")
 
 CACHES = {
     "default": {
@@ -261,8 +259,17 @@ CACHES = {
 }
 
 # Celery settings
-CELERY_BROKER_URL = redis_backend_location
-CELERY_RESULT_BACKEND = redis_backend_location
+RABBITMQ = {
+    "PROTOCOL": "amqp",  # in prod change with "amqps"
+    "HOST": os.getenv("RABBITMQ_HOST", "localhost"),
+    "PORT": os.getenv("RABBITMQ_PORT", 5672),
+    "USER": os.getenv("RABBITMQ_USER", "guest"),
+    "PASSWORD": os.getenv("RABBITMQ_PASSWORD", "guest"),
+}
+
+CELERY_BROKER_URL = f"{RABBITMQ['PROTOCOL']}://{RABBITMQ['USER']}:{RABBITMQ['PASSWORD']}@{RABBITMQ['HOST']}:{RABBITMQ['PORT']}"  # noqa
+
+CELERY_RESULT_BACKEND = "django-db"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 

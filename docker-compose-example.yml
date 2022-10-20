@@ -26,8 +26,12 @@ services:
       - DJANGO_SUPERUSER_USERNAME=pc_test
       - DJANGO_SUPERUSER_PASSWORD=pc_test
       - DJANGO_SUPERUSER_EMAIL=blabal@example.com
+      - RABBITMQ_HOST=pc_rabbit_host
+      - RABBITMQ_USER=pc_rabbit
+      - RABBITMQ_PASSWORD=pc_rabbit
     depends_on:
       - redis_service
+      - rabbit
     restart: always
 
   postgres_db_service:
@@ -39,6 +43,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     restart: always
+
+  # RabbitMQ
+  rabbit:
+      hostname: pc_rabbit_host
+      image: rabbitmq:3.6.9
+      environment:
+          - RABBITMQ_DEFAULT_USER=pc_rabbit
+          - RABBITMQ_DEFAULT_PASS=pc_rabbit
+      ports:
+          - "5672:5672"
+          - "15672:15672"
 
   redis_service:
     image: redis:alpine
