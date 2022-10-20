@@ -18,6 +18,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic.edit import UpdateView
 from pyrouter.router_client import RouterClient
 
+from my_router import logger
 from my_router.constants import DAYS_CHOICES, DEFAULT_CACHE, days_const
 from my_router.models import Device, Router
 from my_router.serializers import (DeviceDataReverseSerializer,
@@ -797,7 +798,7 @@ def apply_limit_time(
              cached_data)
         )
     for kwargs, mac, cached_data in set_info_tuple:
-        print(kwargs)
+        logger.info(str(kwargs))
         client.set_host_info(**kwargs)
         DEFAULT_CACHE.set(
             get_router_device_cache_key(router.id, mac), cached_data)

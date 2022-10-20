@@ -293,6 +293,52 @@ try:
 except Exception:
     PARENT_CONTROL_FETCH_INFO_INTERVAL = 10
 
+
+LOGGING_PATH = BASE_DIR / 'log'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} '
+                      '{thread:d} {msg}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {msg}',
+            'style': '{',
+        },
+    },
+    'root': {
+        'handlers': ['file'],
+        'level': 'INFO' if DEBUG else 'WARNING',
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGGING_PATH, "log.log"),
+            'maxBytes': 1024*1024*20,  # 20 MB
+            'backupCount': 15,
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'router_parent_control': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            # preventing double printing
+            # https://stackoverflow.com/a/44426266/3437454
+            'propagate': False
+        }
+    }
+}
+
+
 if local_settings is not None:  # pragma: no cover
     for name, val in local_settings.items():
         if not name.startswith("_"):
