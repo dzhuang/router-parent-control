@@ -678,6 +678,7 @@ def edit_limit_time(request, router_id, limit_time_name):
 
             if apply_to_changed:
                 try:
+                    fetch_new_info_save_and_set_cache(router=router)
                     apply_limit_time(
                         router, limit_time_name, apply_to_initial, new_apply_to)
                 except Exception as e:
