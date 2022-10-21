@@ -458,9 +458,13 @@ def get_mac_choice_tuple(router: Router) -> list:
     for mac in all_macs:
         if mac in ignored_device_mac:
             continue
-        apply_to_choices.append(
-            (mac, DEFAULT_CACHE.get(
-                get_router_device_cache_key(router.id, mac))["hostname"]))
+
+        _host_info = DEFAULT_CACHE.get(get_router_device_cache_key(router.id, mac))
+        if not _host_info:
+            continue
+
+        apply_to_choices.append((mac, _host_info["hostname"]))
+
     return apply_to_choices
 
 
