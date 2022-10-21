@@ -827,7 +827,7 @@ class EditLimitTimeTest(
             self.assertEqual(self.mock_set_host_info.call_count, 2)
 
             # First call in get_available_name, second when done.
-            self.assertEqual(mock_fetch_new.call_count, 2)
+            self.assertEqual(mock_fetch_new.call_count, 3)
 
     def test_add_no_apply_to(self):
         with mock.patch(
@@ -846,7 +846,7 @@ class EditLimitTimeTest(
             self.assertEqual(self.mock_set_host_info.call_count, 0)
 
             # First call in get_available_name, second when done.
-            self.assertEqual(mock_fetch_new.call_count, 2)
+            self.assertEqual(mock_fetch_new.call_count, 3)
 
     def test_add_limit_time_errored(self):
         self.mock_add_limit_time.side_effect = lambda x: exec("raise RuntimeError()")
@@ -900,7 +900,7 @@ class EditLimitTimeTest(
             )
 
             # First call in get_available_name
-            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertEqual(mock_fetch_new.call_count, 2)
             self.assertAddMessageCallCount(1)
 
             # set_host_info is not reached
@@ -978,7 +978,7 @@ class EditLimitTimeTest(
             self.mock_add_limit_time.assert_not_called()
 
             # get_available_name not called
-            self.assertEqual(mock_fetch_new.call_count, 1)
+            self.assertEqual(mock_fetch_new.call_count, 2)
             self.assertAddMessageCallCount(0)
 
             # set_host_info is not reached
@@ -1031,7 +1031,7 @@ class EditLimitTimeTest(
             )
 
             # Once in get_available_name, once when done
-            self.assertEqual(mock_fetch_new.call_count, 2)
+            self.assertEqual(mock_fetch_new.call_count, 3)
             self.assertAddMessageCallCount(1)
 
             # set_host_info is not reached

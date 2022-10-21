@@ -649,19 +649,19 @@ def edit_limit_time(request, router_id, limit_time_name):
 
         if form.is_valid():
             is_editing_exist_limit_time = False
-            apply_to_changed = False
+            need_to_updated_apply_to = False
             new_apply_to = form.cleaned_data["apply_to"]
 
             if form.has_changed():
+                need_to_updated_apply_to = True
                 for field in ["name", "start_time", "end_time", "days"]:
                     if field in form.changed_data:
                         if not add_new:
                             is_editing_exist_limit_time = True
-                        apply_to_changed = True
+
                         break
                 else:
                     assert "apply_to" in form.changed_data
-                    apply_to_changed = True
 
             if add_new or is_editing_exist_limit_time:
                 apply_to_initial = []
@@ -676,7 +676,7 @@ def edit_limit_time(request, router_id, limit_time_name):
                         "form_description": form_description,
                     })
 
-            if apply_to_changed:
+            if need_to_updated_apply_to:
                 try:
                     fetch_new_info_save_and_set_cache(router=router)
                     apply_limit_time(
