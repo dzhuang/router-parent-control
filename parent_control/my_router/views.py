@@ -76,7 +76,7 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
     try:
         new_result = client.get_restructured_info_dicts()
     except Exception as e:
-        logger.error(f'Failed to get info from router {Router.name}: '
+        logger.error(f'Failed to get info from router {router.name}: '
                      f'{type(e).__name__}: {str(e)}')
         return
 
@@ -141,14 +141,14 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
         limit_time = device_info.get("limit_time", "")
         limit_time_list = limit_time.split(",")
         for lt in limit_time_list:
-            limit_time_device_dict[lt]: list = (
-                    list(limit_time_device_dict.get(lt, [])) + [mac])
+            limit_time_device_dict[lt]: list = list(set(
+                    list(limit_time_device_dict.get(lt, [])) + [mac]))
 
         forbid_domain = device_info.get("forbid_domain", "")
         forbid_domain_list = forbid_domain.split(",")
         for fb in forbid_domain_list:
-            forbid_domain_device_dict[fb]: list = (
-                    list(forbid_domain_device_dict.get(fb, [])) + [mac])
+            forbid_domain_device_dict[fb]: list = list(set(
+                    list(forbid_domain_device_dict.get(fb, [])) + [mac]))
     # }}}
 
     # {{{ handle limit_time
@@ -444,6 +444,9 @@ def do_delete(router, name, delete_type):
     else:
         client.delete_limit_time(limit_time_name=name)
 
+    remove_info_from_cache(
+        router_id=router.id, info_name=name, prefix=delete_type)
+
     # update cached device info (especially those not present when fetch)
     fetch_new_info_save_and_set_cache(router=router)
 
@@ -730,6 +733,50 @@ def edit_limit_time(request, router_id, limit_time_name):
     })
 
 
+def remove_info_from_cache(router_id, info_name, prefix):
+    # Update cache for correct loading init values in forms after renames
+    assert prefix in ["limit_time", "forbid_domain"]
+
+    if prefix == "limit_time":
+        get_cache_key_func = get_cached_limit_times_cache_key
+    else:
+        get_cache_key_func = get_cached_forbid_domains_cache_key
+
+    cached_info_dict = DEFAULT_CACHE.get(get_cache_key_func(router_id))
+
+    macs_of_with_info = cached_info_dict.get(info_name, {}).get("apply_to", [])
+
+    # Update info cache (limit_time or forbid_domain)
+    popped = cached_info_dict.pop(info_name, None)
+    if popped:
+        DEFAULT_CACHE.set(get_cache_key_func(router_id), cached_info_dict)
+        assert info_name not in cached_info_dict
+
+    for mac in macs_of_with_info:
+        cached_data = DEFAULT_CACHE.get(
+            get_router_device_cache_key(router_id, mac), {})
+
+        mac_cached_info = cached_data.get(prefix, "")
+        if mac_cached_info == "":
+            # when will this happen?
+            continue
+
+        mac_cached_info = mac_cached_info.split(",")
+        mac_cached_info = [lt for lt in mac_cached_info if lt != info_name]
+        cached_data[prefix] = ",".join(mac_cached_info)
+
+        # Remove invalid keys when added in problematic debugging.
+        # todo: remove this block
+        for k in cached_data:
+            if k.startswith("limit_time_"):
+                cached_data.pop(k)
+
+        cached_data[prefix] = ",".join(mac_cached_info)
+
+        DEFAULT_CACHE.set(
+            get_router_device_cache_key(router_id, mac), cached_data)
+
+
 def add_new_limit_time_from_form_data(router, form):
     limit_time_name = find_available_name(router, "limit_time")
     add_limit_time_kwargs = dict(
@@ -997,6 +1044,7 @@ def edit_forbid_domain(request, router_id, forbid_domain_name):
                         })
 
             if form.has_changed():
+                # todo: do_delete for forbid_domain
                 fetch_new_info_save_and_set_cache(router=router)
 
             if add_new:
