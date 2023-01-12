@@ -767,9 +767,8 @@ def remove_info_from_cache(router_id, info_name, prefix):
 
         # Remove invalid keys when added in problematic debugging.
         # todo: remove this block
-        for k in cached_data:
-            if k.startswith("limit_time_"):
-                cached_data.pop(k)
+        cached_data = {k: v for k, v in cached_data.items()
+                       if not k.startswith("limit_time_")}
 
         cached_data[prefix] = ",".join(mac_cached_info)
 
