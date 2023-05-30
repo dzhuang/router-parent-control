@@ -1082,14 +1082,36 @@ class RebootForm(StyledForm):
             Submit("reboot", _("Reboot"), css_class="btn btn-danger"))
 
 
+def do_reboot_router(router_id: int | None = None,
+                     router: Router | None = None):
+    """
+    Either router_id or router should be specified, the former is used in task
+    calling
+    """
+    if router is None:
+        assert router_id is not None, \
+            "Either router_id or router should be specified"
+        routers = Router.objects.filter(id=router_id)
+        if not routers.count():
+            return
+
+        router, = routers
+    else:
+        router_id = router.id
+
+    assert router is not None and router_id is not None
+
+    client: RouterClient = router.get_client()
+    client.reboot()
+
+
 @login_required
 def reboot_router(request, router_id):
     router = get_object_or_404(Router, id=router_id)
 
     if request.method == "POST":
         try:
-            client: RouterClient = router.get_client()
-            client.reboot()
+            do_reboot_router(router=router)
             messages.add_message(
                 request, messages.INFO, _("Device rebooted."))
         except Exception as e:
