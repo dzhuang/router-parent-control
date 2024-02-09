@@ -1,7 +1,7 @@
 import django.core.cache as cache
 from django.utils.translation import gettext_lazy as _
 
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 DEFAULT_CACHE = cache.caches["default"]
 
 ROUTER_DEVICES_CACHE_KEY_PATTERN = "router-instance:{router_id}{cache_version}"
