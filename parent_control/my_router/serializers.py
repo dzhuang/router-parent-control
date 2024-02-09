@@ -180,13 +180,13 @@ class InfoSerializer(serializers.Serializer):
         return super().to_internal_value(data)
 
     host_info = serializers.DictField(
-        required=True, allow_empty=False, allow_null=False)
+        required=True, allow_empty=True, allow_null=True)
 
     forbid_domain = serializers.DictField(
-        required=True, allow_empty=False, allow_null=False)
+        required=True, allow_empty=True, allow_null=True)
 
     limit_time = serializers.DictField(
-        required=True, allow_empty=False, allow_null=False)
+        required=True, allow_empty=True, allow_null=True)
 
     def get_datatable_data(self, router, info_name):
         router_id = router.id
