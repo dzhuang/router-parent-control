@@ -75,7 +75,6 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
     client: RouterClient = router.get_client()
     try:
         new_result = client.get_restructured_info_dicts()
-        logger.info(new_result)
     except Exception as e:
         logger.error(f'Failed to get info from router {router.name}: '
                      f'{type(e).__name__}: {str(e)}')
@@ -85,8 +84,6 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
     if not serializer.is_valid():
         logger.error(serializer.errors)
         return
-
-    logger.info("Begin to cache and return new data.")
 
     DEFAULT_CACHE.set(get_all_info_cache_key(router_id), new_result)
 
