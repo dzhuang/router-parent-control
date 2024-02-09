@@ -185,7 +185,7 @@ def get_all_cached_info_with_online_status(router):
     # Avoiding cache cleared
     if not cached_info:
         cached_info = fetch_new_info_save_and_set_cache(router=router)
-        # assert cached_info
+        assert cached_info
 
     host_info = cached_info.get("host_info", {})
 
