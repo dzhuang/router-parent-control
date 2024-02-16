@@ -148,7 +148,7 @@ class InfoSerializer(serializers.Serializer):
         for field in ["host_info", "forbid_domain", "limit_time"]:
             if field not in data:
                 raise serializers.ValidationError(
-                    {"host_info": _("This field is required.")})
+                    {field: _("This field is required.")})
 
         limit_time_mac_dict = {}
         forbid_domain_mac_dict = {}
